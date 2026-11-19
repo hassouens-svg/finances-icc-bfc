@@ -1,19 +1,19 @@
 import "server-only";
 import { Query } from "node-appwrite";
 import { canManage, type AppContext } from "@/server/context";
-import { getLookups } from "@/server/lookups";
+import { getLookups, forChurch } from "@/server/lookups";
 import { listScoped } from "@/server/data";
 import type { Donor } from "@/lib/types";
 
-export async function sessionFormData(ctx: AppContext) {
-  const churches = ctx.churches.filter((c) => canManage(ctx, c.$id) && (ctx.view === "all" || c.$id === ctx.view));
-  const ids = churches.map((c) => c.$id);
-  const [lk, donors] = await Promise.all([getLookups(ids.join(",")), listScoped<Donor>(ctx, "donors", [Query.isNull("anonymizedAt"), Query.orderAsc("fullName")], ids)]);
-  const opt = (x: { $id: string; name: string; churchId: string }) => ({ id: x.$id, name: x.name, churchId: x.churchId });
+export function manageableChurches(ctx: AppContext) {
+  return ctx.churches.filter((c) => canManage(ctx, c.$id) && (ctx.view === "all" || c.$id === ctx.view));
+}
+
+export async function entryData(ctx: AppContext, churchId: string) {
+  const [lk, donors] = await Promise.all([getLookups(churchId), listScoped<Donor>(ctx, "donors", [Query.isNull("anonymizedAt"), Query.orderAsc("fullName"), Query.select(["$id", "fullName", "churchId"])], [churchId])]);
   return {
-    churches: churches.map((c) => ({ id: c.$id, name: c.name })),
-    donationTypes: lk.donationTypes.map(opt),
-    services: lk.services.map(opt),
-    donors: donors.map((d) => ({ id: d.$id, name: d.fullName, churchId: d.churchId })),
+    donationTypes: forChurch(lk.donationTypes, churchId).map((t) => ({ id: t.$id, name: t.name })),
+    services: forChurch(lk.services, churchId).map((t) => ({ id: t.$id, name: t.name })),
+    donors: donors.map((d) => ({ id: d.$id, name: d.fullName })),
   };
 }

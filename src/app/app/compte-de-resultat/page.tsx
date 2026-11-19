@@ -48,7 +48,7 @@ export default async function IncomePage({ searchParams }: { searchParams: Promi
   const [cur, prev] = await Promise.all([incomeFor(ctx, period), incomeFor(ctx, prevP)]);
   return (
     <>
-      <PageHeader title="Compte de résultat" description="Produits (dons et offrandes) − charges (dépenses payées) = résultat. Comparaison avec la période précédente."
+      <PageHeader module={7} title="Compte de résultat" description="Produits (dons et offrandes) − charges (dépenses payées) = résultat. Comparaison avec la période précédente."
         actions={<><PeriodFilter value={period.key} from={sp.from} to={sp.to} /><ExportButtons entity="income" sp={{ ...sp, p: period.key }} /></>} />
       <div className="mb-5 rounded-2xl border border-border bg-bg p-5 shadow-card sm:p-6">
         <div className="grid gap-4 sm:grid-cols-3">

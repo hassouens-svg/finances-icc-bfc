@@ -35,7 +35,7 @@ export default async function BudgetPage({ searchParams }: { searchParams: Promi
   const opts = { categories: forChurch(lk.categories, church.$id).map((c) => ({ id: c.$id, name: c.name })), departments: lk.departments.filter((d) => d.churchId === church.$id).map((d) => ({ id: d.$id, name: d.name })) };
   return (
     <>
-      <PageHeader title={`Budget ${year}`} description={`${church.name} — prévu vs réalisé (dépenses payées). ${Math.round(elapsed * 100)} % de l'année écoulée.`}
+      <PageHeader module={7} title={`Budget ${year}`} description={`${church.name} — prévu vs réalisé (dépenses payées). ${Math.round(elapsed * 100)} % de l'année écoulée.`}
         actions={manage ? <BudgetDialog churchId={church.$id} year={year} {...opts} /> : undefined} />
       <ChurchPicker churches={allowed.map((c) => ({ id: c.$id, name: c.name }))} current={church.$id} basePath="/app/budget" />
       {lines.length === 0 ? <EmptyState icon={<PieChart />} title="Aucun budget défini" description="Ajoutez un montant prévu par catégorie ou par département." action={manage ? <BudgetDialog churchId={church.$id} year={year} {...opts} /> : undefined} /> : (

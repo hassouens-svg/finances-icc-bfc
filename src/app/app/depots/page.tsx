@@ -42,7 +42,7 @@ export default async function DepositsPage({ searchParams }: { searchParams: Pro
   const rows = deposits.map((d) => ({ id: d.$id, href: `/app/depots/${d.$id}`, date: d.date, reference: d.reference, church: churchName(ctx, d.churchId), account: accounts.find((a) => a.$id === d.bankAccountId)?.label ?? "—", slip: d.slipNumber ?? "—", status: d.status, gap: d.gapCents || null, total: d.cashCents + d.chequeCents }));
   return (
     <>
-      <PageHeader title="Dépôts bancaires" description="L'argent « En caisse » part à la banque : préparé → déposé → confirmé sur le relevé."
+      <PageHeader module={6} help="depots" title="Dépôts bancaires" description="L'argent « En caisse » part à la banque : préparé → déposé → confirmé sur le relevé."
         actions={<><PeriodFilter value={period.key} from={sp.from} to={sp.to} />{canWrite && <Button asChild><Link href="/app/depots/nouveau"><Plus /> Nouveau dépôt</Link></Button>}</>} />
       {balances.cash > settings.cashMaxCents && (
         <div className="mb-5 flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 text-[14px] text-warning">

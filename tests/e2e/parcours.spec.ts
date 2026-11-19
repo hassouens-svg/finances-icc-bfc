@@ -3,6 +3,8 @@ import path from "node:path";
 import { login, toast, euros } from "./helpers";
 
 const ticket = path.join(__dirname, "../fixtures/ticket.png");
+/** Date unique (année en cours) : chaque exécution ouvre sa propre séance au lieu de reprendre un brouillon. */
+const uniqueDate = () => { const d = new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1) + Math.floor(Math.random() * 280) * 86400000); return d.toISOString().slice(0, 10); };
 
 test("la racine est la page de connexion (pas de landing page)", async ({ page }) => {
   await page.goto("/");
@@ -21,26 +23,83 @@ test("cloisonnement : un trésorier ne voit que son église", async ({ page }) =
   await expect(page.getByText("ICC Chalon-sur-Saône").filter({ visible: true }).first()).toBeVisible();
 });
 
-test("séance d'offrandes du dimanche saisie sur téléphone", async ({ page }) => {
+test("offrandes : saisie enveloppe par enveloppe, enregistrement automatique, base donateurs", async ({ page }) => {
+  const who = `Marie Enveloppe ${Date.now().toString(36)}`;
   await login(page, "tresorier.auxerre@example.com");
   const start = Date.now();
   await page.goto("/app/offrandes/nouvelle");
-  await page.getByRole("radio", { name: "Offrande simple" }).click();
-  await page.getByLabel("Montant").fill("320,50");
-  await page.getByRole("button", { name: "Ajouter" }).click();
+  await page.locator("input[name=date]").fill(uniqueDate());
+  await page.getByRole("button", { name: /Commencer la saisie/ }).click();
+  await page.waitForURL(/\/saisie$/);
+  const saved = page.getByText("Tout est enregistré").first();
+
+  // nominatif : nom → Entrée → montant → Entrée
+  await page.getByRole("radio", { name: "Nominatif" }).click();
   await page.getByRole("radio", { name: "Dîme" }).click();
+  await page.getByRole("radio", { name: "Espèces" }).click();
+  await page.getByLabel("Nom du donateur").fill(who);
+  await page.getByLabel("Nom du donateur").press("Enter");
+  await page.getByLabel("Montant", { exact: true }).fill("50");
+  await page.getByLabel("Montant", { exact: true }).press("Enter");
+  // anonyme
+  await page.getByRole("radio", { name: "Anonyme" }).click();
+  await page.getByRole("radio", { name: "Offrande simple" }).click();
+  await page.getByLabel("Montant", { exact: true }).fill("320,50");
+  await page.getByLabel("Montant", { exact: true }).press("Enter");
+  // chèque, donateur déjà connu
+  await page.getByRole("radio", { name: "Nominatif" }).click();
   await page.getByRole("radio", { name: "Chèque" }).click();
-  await page.getByLabel("Montant").fill("150");
-  await page.getByRole("button", { name: "Ajouter" }).click();
-  await page.fill("#c1", "Marie Diallo");
-  await page.fill("#c2", "Jean Petit");
-  await page.fill("#cc", "320,50");
-  await page.fill("#cq", "150");
-  await page.getByRole("button", { name: /^Valider$/ }).click();
+  await page.getByLabel("Nom du donateur").fill(who);
+  await page.getByLabel("Montant", { exact: true }).fill("150");
+  await page.getByRole("button", { name: /Ajouter l'enveloppe/ }).click();
+  await expect(saved).toBeVisible();
+  await expect(page.getByText("Enveloppes saisies (3)")).toBeVisible();
+
+  // rechargement : rien n'est perdu
+  await page.reload();
+  await expect(page.getByText("Enveloppes saisies (3)")).toBeVisible();
+
+  // comptage à deux puis validation
+  await page.fill("#c1", "Marie Diallo"); await page.fill("#c2", "Jean Petit");
+  await page.fill("#cc", "370,50"); await page.fill("#cq", "150"); await page.locator("#cq").blur();
+  await expect(page.getByText("Comptage conforme à la saisie")).toBeVisible();
+  await expect(saved).toBeVisible();
+  await page.getByRole("button", { name: "Valider la séance" }).filter({ visible: true }).first().click();
   await page.waitForURL(/\/app\/offrandes\/(?!nouvelle)[\w]+$/);
   await expect(page.getByText("Comptage conforme").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByText("Verrouillée", { exact: true })).toBeVisible();
   expect(Date.now() - start).toBeLessThan(120_000);
+
+  // le donateur a été créé une seule fois, avec ses 2 dons
+  await page.goto("/app/donateurs");
+  await page.getByPlaceholder("Rechercher…").fill(who);
+  await expect(page.getByText(who).filter({ visible: true })).toHaveCount(1);
+  await expect(page.getByText("200,00").filter({ visible: true }).first()).toBeVisible();
+});
+
+test("offrandes : 25 enveloppes saisies d'affilée, aucune perdue", async ({ page }) => {
+  await login(page, "tresorier.chalon@example.com");
+  await page.goto("/app/offrandes/nouvelle");
+  await page.locator("input[name=date]").fill(uniqueDate());
+  await page.getByRole("button", { name: /Commencer la saisie/ }).click();
+  await page.waitForURL(/\/saisie$/);
+  await page.getByRole("radio", { name: "Anonyme" }).click();
+  const amount = page.getByLabel("Montant", { exact: true });
+  let total = 0;
+  for (let i = 1; i <= 25; i++) {
+    await amount.fill(String(i * 2));
+    await amount.press("Enter");
+    total += i * 2;
+  }
+  await expect(page.getByText("Tout est enregistré").first()).toBeVisible({ timeout: 60_000 });
+  await page.reload();
+  await expect(page.getByText("Enveloppes saisies (25)")).toBeVisible();
+  await expect(page.getByText(`${total},00`).filter({ visible: true }).first()).toBeVisible();
+  // nettoyage : suppression du brouillon
+  await page.goto(page.url().replace(/\/saisie$/, ""));
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Supprimer" }).click();
+  await page.waitForURL(/\/app\/offrandes$/);
 });
 
 test("un dépôt diminue la caisse et augmente la banque", async ({ page }) => {

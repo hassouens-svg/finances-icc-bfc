@@ -26,7 +26,7 @@ export type ShellProps = {
 };
 
 function NavLink({ item, pathname, badge, onClick }: { item: NavItem; pathname: string; badge?: number; onClick?: () => void }) {
-  const active = isActive(pathname, item.href);
+  const active = isActive(pathname, item);
   const Icon = item.icon;
   return (
     <Link
@@ -50,8 +50,13 @@ function NavList({ pathname, canAdmin, badges, onNavigate }: { pathname: string;
     <nav className="space-y-5" aria-label="Navigation principale">
       {NAV.filter((g) => !g.adminOnly || canAdmin).map((g, i) => (
         <div key={i} className="space-y-0.5">
-          {g.label && <p className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">{g.label}</p>}
-          {g.items.map((it) => (
+          {g.label && (
+            <p className="flex items-center gap-2 px-2.5 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
+              {g.num && <span className="num grid size-[18px] place-items-center rounded-md bg-accent-soft text-[10px] font-semibold tracking-normal text-accent-strong">{g.num}</span>}
+              <span className="truncate">{g.label}</span>
+            </p>
+          )}
+          {g.items.filter((it) => it.href !== "/app/admin" || canAdmin).map((it) => (
             <NavLink key={it.href} item={it} pathname={pathname} badge={it.badgeKey ? badges[it.badgeKey] : undefined} onClick={onNavigate} />
           ))}
         </div>
@@ -178,7 +183,7 @@ function Bell_({ unread }: { unread: number }) {
 function Fab() {
   const [open, setOpen] = React.useState(false);
   const items = [
-    { href: "/app/offrandes/nouvelle", label: "Une offrande", icon: HandCoins },
+    { href: "/app/offrandes/nouvelle", label: "Des offrandes", icon: HandCoins },
     { href: "/app/depenses/nouvelle", label: "Une dépense", icon: Receipt },
     { href: "/app/depots/nouveau", label: "Un dépôt", icon: Landmark },
   ];
@@ -244,13 +249,13 @@ export function Shell(p: ShellProps) {
         <div className="mx-auto w-full max-w-[1240px] px-4 pb-32 pt-5 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">{p.children}</div>
       </main>
 
-      {p.canWrite && !/\/(nouvelle|nouveau|modifier)$/.test(pathname) && <Fab />}
+      {p.canWrite && !/\/(nouvelle|nouveau|modifier|saisie)$/.test(pathname) && <Fab />}
 
       {/* Barre du bas (téléphone) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 pb-safe backdrop-blur-md lg:hidden" aria-label="Navigation mobile">
         <div className="grid h-16 grid-cols-5">
           {MOBILE_TABS.map((t) => {
-            const active = isActive(pathname, t.href);
+            const active = isActive(pathname, t);
             const badge = t.badgeKey ? p.badges[t.badgeKey] : 0;
             return (
               <Link key={t.href} href={t.href} className={cn("relative flex flex-col items-center justify-center gap-1 text-[11px] font-medium", active ? "text-accent" : "text-muted")}>

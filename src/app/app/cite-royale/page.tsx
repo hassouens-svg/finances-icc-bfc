@@ -44,7 +44,7 @@ export default async function CrPage({ searchParams }: { searchParams: Promise<{
   ];
   return (
     <>
-      <PageHeader title="Demandes à la Cité Royale" description="Matériel, financement, équipement… suivez chaque demande jusqu'à sa réception."
+      <PageHeader module={1} help="cite-royale" title="Demandes à la Cité Royale" description="Matériel, financement, équipement… suivez chaque demande jusqu'à sa réception."
         actions={
           <>
             <div className="flex rounded-xl bg-surface-2 p-1">

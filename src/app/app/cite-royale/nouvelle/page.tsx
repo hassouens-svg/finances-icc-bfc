@@ -11,5 +11,5 @@ export default async function NewCr() {
   const ctx = await requireContext();
   const data = await crFormData(ctx);
   if (!data.churches.length) return <EmptyState icon={<Crown />} title="Vous n'avez pas les droits de saisie" />;
-  return (<><PageHeader back={{ href: "/app/cite-royale", label: "Demandes Cité Royale" }} title="Nouvelle demande à la Cité Royale" /><CrForm {...data} /></>);
+  return (<><PageHeader module={1} back={{ href: "/app/cite-royale", label: "Demandes Cité Royale" }} title="Nouvelle demande à la Cité Royale" /><CrForm {...data} /></>);
 }

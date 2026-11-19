@@ -23,7 +23,7 @@ export default async function ToApprovePage() {
   const atts = mine.length ? await listScoped<Attachment>(ctx, "attachments", [Query.equal("entityType", "expense"), Query.equal("entityId", mine.map((e) => e.$id))]) : [];
   return (
     <>
-      <PageHeader title="À valider" description="Les dépenses qui attendent votre décision. Approuvez, refusez ou demandez une précision." />
+      <PageHeader module={5} title="À valider" description="Les dépenses qui attendent votre décision. Approuvez, refusez ou demandez une précision." />
       {mine.length === 0 ? (
         <EmptyState icon={<CheckCheck />} title="Rien à valider pour le moment 🎉" description="Vous serez notifié dès qu'une dépense attendra votre validation." />
       ) : (

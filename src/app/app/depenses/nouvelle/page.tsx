@@ -13,7 +13,7 @@ export default async function NewExpense({ searchParams }: { searchParams: Promi
   if (!data.churches.length) return <EmptyState icon={<Receipt />} title="Vous n'avez pas les droits de saisie" />;
   return (
     <>
-      <PageHeader back={{ href: "/app/depenses", label: "Dépenses" }} title="Nouvelle dépense" />
+      <PageHeader module={5} back={{ href: "/app/depenses", label: "Dépenses" }} title="Nouvelle dépense" />
       <ExpenseForm {...data} defaultProjectId={(await searchParams).project} />
     </>
   );

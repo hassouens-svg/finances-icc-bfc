@@ -38,7 +38,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   }));
   return (
     <>
-      <PageHeader title="Dépenses" description="Chaque dépense suit son circuit de validation avant d'être payée."
+      <PageHeader module={5} help="depenses" title="Dépenses" description="Chaque dépense suit son circuit de validation avant d'être payée."
         actions={<><PeriodFilter value={period.key} from={sp.from} to={sp.to} />{canWrite && <Button asChild><Link href="/app/depenses/nouvelle"><Plus /> Nouvelle dépense</Link></Button>}</>} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Argent sorti (payé)" value={s(["paid"])} tone="accent" icon={<Banknote />} hint={period.label} />

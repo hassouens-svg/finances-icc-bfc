@@ -39,7 +39,7 @@ export default async function FundingPage() {
   const budgeted = lk.departments.filter((d) => d.annualBudgetCents);
   return (
     <>
-      <PageHeader title="Besoins des départements" description="Les responsables expriment leurs besoins via un lien public ; vous étudiez, approuvez, puis convertissez en dépense ou en demande à la Cité Royale."
+      <PageHeader module={2} help="besoins" title="Besoins des départements" description="Les responsables expriment leurs besoins via un lien public ; vous étudiez, approuvez, puis convertissez en dépense ou en demande à la Cité Royale."
         actions={ctx.scopeIds.some((id) => canManage(ctx, id)) ? <Button asChild variant="secondary"><Link href="/app/admin/liens"><Link2 /> Liens & QR codes</Link></Button> : undefined} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="En attente" value={items.filter((i) => ["received", "reviewing"].includes(i.status)).length} kind="count" tone="warning" />

@@ -17,7 +17,7 @@ export default async function NewDeposit({ searchParams }: { searchParams: Promi
   const [lk, sessions, cashInHand] = await Promise.all([getLookups(church.$id), undepositedSessions(church.$id), getCashInHand(ctx, [church.$id])]);
   return (
     <>
-      <PageHeader back={{ href: "/app/depots", label: "Dépôts bancaires" }} title="Nouveau dépôt" description={church.name} />
+      <PageHeader module={6} help="depots" back={{ href: "/app/depots", label: "Dépôts bancaires" }} title="Nouveau dépôt" description={church.name} />
       <ChurchPicker churches={allowed.map((c) => ({ id: c.$id, name: c.name }))} current={church.$id} basePath="/app/depots/nouveau" />
       {lk.bankAccounts.length === 0 ? (
         <EmptyState icon={<Landmark />} title="Aucun compte bancaire" description="Ajoutez d'abord un compte bancaire dans l'administration." />

@@ -38,7 +38,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         description={`${s.reference} · ${churchName(ctx, s.churchId)}`}
         actions={
           <>
-            {s.status === "draft" && manage && <Button asChild variant="secondary"><Link href={`/app/offrandes/${id}/modifier`}><Pencil /> Modifier / valider</Link></Button>}
+            {s.status === "draft" && manage && <Button asChild variant="secondary"><Link href={`/app/offrandes/${id}/saisie`}><Pencil /> Continuer la saisie</Link></Button>}
             {s.status === "draft" && manage && <ActionButton variant="danger-soft" action={deleteOfferingSessionAction} payload={{ id }} confirm="Supprimer ce brouillon ?">Supprimer</ActionButton>}
             {s.status === "validated" && ctx.isRegional && <UnlockDialog id={id} />}
           </>

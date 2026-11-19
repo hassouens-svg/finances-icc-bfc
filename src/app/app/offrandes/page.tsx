@@ -41,18 +41,18 @@ export default async function OfferingsPage({ searchParams }: { searchParams: Pr
     { key: "total", label: "Total", type: "money" },
   ];
   const rows = sessions.map((s) => ({
-    id: s.$id, href: `/app/offrandes/${s.$id}`, date: s.date, service: s.serviceName ?? "Culte", church: churchName(ctx, s.churchId), reference: s.reference,
+    id: s.$id, href: s.status === "draft" ? `/app/offrandes/${s.$id}/saisie` : `/app/offrandes/${s.$id}`, date: s.date, service: s.serviceName ?? "Culte", church: churchName(ctx, s.churchId), reference: s.reference,
     counters: [s.counter1Name, s.counter2Name].filter(Boolean).join(" & ") || "—", status: s.status, gap: s.gapCents || null, total: s.enteredTotalCents,
   }));
   return (
     <>
-      <PageHeader
+      <PageHeader module={4} help="offrandes"
         title="Dons & offrandes"
         description="Saisie par culte, comptage à deux, verrouillage après validation."
         actions={
           <>
             <PeriodFilter value={period.key} from={sp.from} to={sp.to} />
-            {canWrite && <Button asChild><Link href="/app/offrandes/nouvelle"><Plus /> Nouvelle séance</Link></Button>}
+            {canWrite && <Button asChild><Link href="/app/offrandes/nouvelle"><Plus /> Saisir des offrandes</Link></Button>}
           </>
         }
       />

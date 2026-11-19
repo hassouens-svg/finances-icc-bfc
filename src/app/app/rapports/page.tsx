@@ -28,7 +28,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const items = [...LIST, ...(ctx.isRegional ? [["regional", "Rapport consolidé régional", "Toutes les églises : entrées, sorties, trésorerie"] as const] : []), ["full", "Export complet (sauvegarde)", "Toutes les données de la vue courante, toutes périodes (Excel)"] as const];
   return (
     <>
-      <PageHeader title="Rapports & exports" description={`Vue : ${ctx.view === "all" ? "toutes les églises" : ctx.activeChurch?.name}. PDF avec en-tête, pagination, totaux et signatures.`} actions={<PeriodFilter value={sp.p ?? "month"} from={sp.from} to={sp.to} />} />
+      <PageHeader module={7} title="Rapports & exports" description={`Vue : ${ctx.view === "all" ? "toutes les églises" : ctx.activeChurch?.name}. PDF avec en-tête, pagination, totaux et signatures.`} actions={<PeriodFilter value={sp.p ?? "month"} from={sp.from} to={sp.to} />} />
       <div className="grid gap-3 md:grid-cols-2">
         {items.map(([k, t, d]) => (
           <Card key={k} className="flex items-center gap-4 p-4">

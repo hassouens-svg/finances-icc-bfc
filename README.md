@@ -103,7 +103,25 @@ Ouvrez http://localhost:3000 : la page d'accueil **est** la page de connexion.
 4. Chaque trésorier : **Comptes bancaires**, **Départements**, puis **Liens publics** (besoins + remboursements, avec QR code).
 5. L'église mère règle les **Circuits de validation** et les **Alertes**.
 
-## 8. Comment c'est construit
+## 8. Organisation et guide
+
+Les menus suivent les modules du cahier des charges :
+
+| # | Module | Écrans |
+|---|---|---|
+| 1 | Achats · Cité Royale | Demandes (Kanban ou liste), nouvelle demande, réception |
+| 2 | Besoins des départements | Demandes de financement (lien public) |
+| 3 | Remboursements | Demandes de remboursement (lien public + photo) |
+| 4 | Dons & offrandes | Saisie des enveloppes, donateurs |
+| 5 | Dépenses & projets | Dépenses, circuit de validation (« À valider »), projets |
+| 6 | Dépôts bancaires | Dépôts & caisse |
+| 7 | Trésorerie & comptabilité | Trésorerie, compte de résultat, budget, rapprochement, rapports |
+
+- **Guide d'utilisation** (`/app/guide`) : premiers pas, qui fait quoi, et le parcours pas à pas de chaque module.
+- **« Comment ça marche ? »** en haut de chaque module : les étapes essentielles, repliables (l'app s'en souvient).
+- **Saisie des offrandes enveloppe par enveloppe** : chaque enveloppe est enregistrée dès qu'on appuie sur Entrée (pas de bouton « Enregistrer »). Les noms connus sont proposés ; un nouveau nom crée automatiquement sa fiche donateur. On peut quitter et reprendre la saisie plus tard, puis la séance est validée après le comptage à deux.
+
+## 9. Comment c'est construit
 
 - **Next.js 15** (App Router, Server Actions, TypeScript strict), **Tailwind CSS v4**, composants façon shadcn/ui (Radix), **Lucide**, **Recharts**, **TanStack Table**, **Zod**, **ExcelJS**, **@react-pdf/renderer**.
 - **Appwrite** (TablesDB) : `src/lib/schema.ts` est la source unique du schéma.
@@ -115,7 +133,7 @@ Ouvrez http://localhost:3000 : la page d'accueil **est** la page de connexion.
 - **Règle d'or** : une dépense ne peut être « Payée » qu'après la dernière étape de son circuit (y compris les régularisations et les remboursements).
 - **Formulaires publics** : jeton de lien, limitation de débit, champ piège anti-robot, délai minimal, contrôle du vrai type de fichier, aucune donnée bancaire demandée.
 
-## 9. Tests
+## 10. Tests
 
 ```bash
 npm test                 # tests unitaires : soldes, compte de résultat, circuit de validation
@@ -123,7 +141,7 @@ npm run test:e2e         # parcours complets (Playwright, sur un serveur lancé 
 npm run test:isolation   # vérifie directement auprès d'Appwrite qu'un trésorier ne lit pas une autre église
 ```
 
-## 10. Pages utiles
+## 11. Pages utiles
 
 - `/dev/styleguide` : le design system (désactivé en production, sauf `ENABLE_STYLEGUIDE=true`).
 - `/p/<jeton>` : formulaire public ; `/suivi/<jeton>` : suivi d'une demande sans compte.

@@ -32,7 +32,7 @@ export default async function ReimbursementsPage() {
   const canLinks = ctx.scopeIds.some((id) => canManage(ctx, id));
   return (
     <>
-      <PageHeader title="Remboursements" description="Demandes envoyées via le lien public, avec justificatif photo." actions={canLinks ? <Button asChild variant="secondary"><Link href="/app/admin/liens"><Link2 /> Lien public & QR code</Link></Button> : undefined} />
+      <PageHeader module={3} help="remboursements" title="Remboursements" description="Demandes envoyées via le lien public, avec justificatif photo." actions={canLinks ? <Button asChild variant="secondary"><Link href="/app/admin/liens"><Link2 /> Lien public & QR code</Link></Button> : undefined} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="À traiter" value={s(["submitted", "checking"]).length} kind="count" tone="warning" hint={formatEuro(s(["submitted", "checking"]).reduce((a, r) => a + r.amountCents, 0))} />
         <KpiCard label="Validés, à payer" value={s(["approved"]).reduce((a, r) => a + r.amountCents, 0)} />

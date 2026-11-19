@@ -20,6 +20,8 @@ import { last12Months, previousPeriod } from "@/lib/period";
 import { currentRole } from "@/lib/workflow";
 import { formatEuro } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { MODULES } from "@/lib/guide";
+import { BookOpen } from "lucide-react";
 import type { CrRequest, Expense, FundingRequest, OfferingLine, Reimbursement } from "@/lib/types";
 
 export const metadata = { title: "Tableau de bord" };
@@ -68,6 +70,17 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader eyebrow={<span className="text-[13px] font-medium text-accent">{isAll ? `${ctx.scopeIds.length} églises · Bourgogne-Franche-Comté` : "Tableau de bord"}</span>} title={title} actions={<PeriodFilter value={period.key} from={sp.from} to={sp.to} />} />
+      <nav aria-label="Modules" className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex w-max gap-2 xl:grid xl:w-full xl:grid-cols-8">
+          {MODULES.map((m) => (
+            <Link key={m.id} href={m.href} className="flex items-center gap-2 rounded-xl border border-border bg-bg px-3 py-2 text-[13px] font-medium shadow-card transition-colors hover:border-accent/40">
+              <span className="num grid size-6 shrink-0 place-items-center rounded-lg bg-accent-soft text-[12px] font-semibold text-accent-strong">{m.num}</span>
+              <span className="whitespace-nowrap xl:truncate">{m.short}</span>
+            </Link>
+          ))}
+          <Link href="/app/guide" className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft px-3 py-2 text-[13px] font-medium text-accent-strong"><BookOpen className="size-4" /> Guide</Link>
+        </div>
+      </nav>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Argent entré" value={inc.totalProducts} tone="accent" icon={<ArrowDownLeft />} hint={delta(inc.totalProducts, incPrev.totalProducts)} href="/app/offrandes" />
         <KpiCard label="Argent sorti" value={inc.totalCharges} icon={<ArrowUpRight />} hint={delta(inc.totalCharges, incPrev.totalCharges)} href="/app/depenses" />

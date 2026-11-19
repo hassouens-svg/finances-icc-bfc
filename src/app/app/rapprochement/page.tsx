@@ -35,7 +35,7 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
   const manage = canManage(ctx, church.$id);
   return (
     <>
-      <PageHeader title="Rapprochement bancaire" description="Importez le relevé (CSV) puis pointez chaque ligne avec un dépôt, une dépense ou un don." />
+      <PageHeader module={7} title="Rapprochement bancaire" description="Importez le relevé (CSV) puis pointez chaque ligne avec un dépôt, une dépense ou un don." />
       <ChurchPicker churches={allowed.map((c) => ({ id: c.$id, name: c.name }))} current={church.$id} basePath="/app/rapprochement" />
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <Card>

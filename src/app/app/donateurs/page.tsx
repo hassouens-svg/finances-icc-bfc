@@ -35,7 +35,7 @@ export default async function DonorsPage() {
   const rows = donors.map((d) => ({ id: d.$id, href: `/app/donateurs/${d.$id}`, name: d.fullName, church: churchName(ctx, d.churchId), contact: [d.email, d.phone].filter(Boolean).join(" · ") || "—", last: totals.get(d.$id)?.last ?? null, total: totals.get(d.$id)?.sum ?? 0 }));
   return (
     <>
-      <PageHeader title="Donateurs" description="Seuls les dons nominatifs ont une fiche. Données limitées au nécessaire (RGPD)." actions={church && canManage(ctx, church.$id) ? <DonorDialog churchId={church.$id} /> : undefined} />
+      <PageHeader module={4} title="Donateurs" description="Seuls les dons nominatifs ont une fiche. Données limitées au nécessaire (RGPD)." actions={church && canManage(ctx, church.$id) ? <DonorDialog churchId={church.$id} /> : undefined} />
       <DataTable columns={columns} rows={rows} totals={{ total: rows.reduce((a, r) => a + r.total, 0) }} empty={<EmptyState icon={<Users />} title="Aucun donateur" description="Les fiches sont créées automatiquement lors de la saisie d'un don nominatif." />} />
     </>
   );

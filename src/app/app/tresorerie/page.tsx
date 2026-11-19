@@ -44,7 +44,7 @@ export default async function TreasuryPage() {
   const closeMonths = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1 - i); return monthKey(d); });
   return (
     <>
-      <PageHeader title="Trésorerie" description="Soldes calculés en temps réel à partir de chaque offrande, dépôt et dépense payée." actions={<ExportButtons entity="treasury" />} />
+      <PageHeader module={7} help="tresorerie" title="Trésorerie" description="Soldes calculés en temps réel à partir de chaque offrande, dépôt et dépense payée." actions={<ExportButtons entity="treasury" />} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Total disponible" value={balances.total} tone="accent" icon={<PiggyBank />} />
         <KpiCard label="En caisse" value={balances.cash} icon={<Wallet />} href="/app/depots/nouveau" hint="à déposer" />

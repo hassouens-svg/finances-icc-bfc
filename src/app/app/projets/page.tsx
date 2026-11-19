@@ -25,7 +25,7 @@ export default async function ProjectsPage() {
   const dialog = church && canManage(ctx, church.$id) ? <ProjectDialog churchId={church.$id} /> : undefined;
   return (
     <>
-      <PageHeader title="Projets & événements" description="Budget prévu vs réalisé, dépenses rattachées, jalons." actions={<><ExportButtons entity="projects" />{dialog}</>} />
+      <PageHeader module={5} title="Projets & événements" description="Budget prévu vs réalisé, dépenses rattachées, jalons." actions={<><ExportButtons entity="projects" />{dialog}</>} />
       {projects.length === 0 ? <EmptyState icon={<FolderKanban />} title="Aucun projet" description="Créez une conférence, un camp, des travaux… pour suivre leur budget." action={dialog} /> : (
         <div className="grid gap-3 md:grid-cols-2">
           {projects.map((p) => {
