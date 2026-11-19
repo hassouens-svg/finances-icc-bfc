@@ -3,9 +3,10 @@
  * Désactivé si ALLOW_SEED != "true".
  */
 import "dotenv/config";
-import { Client, TablesDB, Users, Teams, ID, Query, AppwriteException } from "node-appwrite";
+import { Client, TablesDB, Users, Teams, Storage, ID, Query, AppwriteException } from "node-appwrite";
+import { existsSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { DATABASE_ID, TABLES, MOTHER_TEAM_ID, REGION } from "../src/lib/schema";
+import { DATABASE_ID, TABLES, MOTHER_TEAM_ID, REGION, FILES_BUCKET } from "../src/lib/schema";
 import { churchPermissions, regionPermissions } from "../src/lib/perms";
 import { movementsForOfferingLine, movementsForDeposit, movementsForPaidExpense, depositAdjustment, type Movement } from "../src/lib/finance";
 import { selectWorkflow, type WorkflowRule } from "../src/lib/workflow";
@@ -21,6 +22,7 @@ const client = new Client().setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOIN
 const db = new TablesDB(client);
 const users = new Users(client);
 const teams = new Teams(client);
+const storage = new Storage(client);
 
 // ---------- utilitaires ----------
 let seed = 20261119;
@@ -68,6 +70,11 @@ async function reset() {
       n += r.rows.length;
     }
     if (n) console.log(`  − ${t.id} : ${n}`);
+  }
+  for (;;) {
+    const fl = await storage.listFiles({ bucketId: FILES_BUCKET, queries: [Query.limit(100)] });
+    if (!fl.files.length) break;
+    await Promise.all(fl.files.map((f) => storage.deleteFile({ bucketId: FILES_BUCKET, fileId: f.$id })));
   }
   const tl = await teams.list({ queries: [Query.limit(100)] });
   for (const t of tl.teams) if (t.$id.startsWith("church-")) await teams.delete({ teamId: t.$id });
@@ -120,7 +127,16 @@ async function main() {
     const teamId = `church-${c.slug}`;
     try { await teams.create({ teamId, name: c.name, roles: ["treasurer", "pastor", "reader"] }); } catch (e) { if (!(e instanceof AppwriteException && e.code === 409)) throw e; }
     const id = c.mother ? motherId : ID.unique();
-    row("churches", { name: c.name, slug: c.slug, cityId: cityIds[i], address: c.address, isMother: c.mother, parentChurchId: c.mother ? null : motherId, pastorName: c.pastor, teamId, refPrefix: c.prefix, active: true, allowLocalLists: true }, RP, id);
+    // Logo : public/brand/icc-<slug>.jpg|png s'il existe
+    let logoFileId: string | null = null;
+    for (const ext of ["jpg", "png", "webp"]) {
+      const f = `public/brand/icc-${c.slug}.${ext}`;
+      if (!existsSync(f)) continue;
+      const file = await storage.createFile({ bucketId: FILES_BUCKET, fileId: ID.unique(), file: new File([readFileSync(f)], `logo.${ext}`, { type: `image/${ext === "jpg" ? "jpeg" : ext}` }), permissions: RP });
+      logoFileId = file.$id;
+      break;
+    }
+    row("churches", { logoFileId, name: c.name, slug: c.slug, cityId: cityIds[i], address: c.address, isMother: c.mother, parentChurchId: c.mother ? null : motherId, pastorName: c.pastor, teamId, refPrefix: c.prefix, active: true, allowLocalLists: true }, RP, id);
     churches.push({ id, teamId, prefix: c.prefix, name: c.name, perms: churchPermissions({ teamId }), size: c.size });
   }
   try { await teams.get({ teamId: MOTHER_TEAM_ID }); } catch { await teams.create({ teamId: MOTHER_TEAM_ID, name: "Église mère — administration", roles: ["admin"] }); }

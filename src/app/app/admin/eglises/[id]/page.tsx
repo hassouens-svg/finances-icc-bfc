@@ -11,6 +11,7 @@ import { ActionButton } from "@/components/action-form";
 import { toggleChurchActiveAction } from "@/server/actions/admin";
 import { ROLE_LABELS } from "@/lib/status";
 import { initials } from "@/lib/format";
+import { logoUrl } from "@/lib/logo";
 
 export default async function ChurchDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,12 +27,15 @@ export default async function ChurchDetail({ params }: { params: Promise<{ id: s
       <PageHeader
         back={{ href: "/app/admin/eglises", label: "Villes & églises" }}
         eyebrow={c.isMother ? <Badge tone="progress" dot={false}>Église mère régionale</Badge> : <Badge tone="neutral" dot={false}>Église fille</Badge>}
-        title={c.name}
+        title={<span className="flex items-center gap-3">{logoUrl(c) && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl(c)!} alt="" className="size-11 rounded-xl border border-border object-cover" />
+        )}{c.name}</span>}
         description={[city?.name, c.address].filter(Boolean).join(" · ")}
         actions={
           <>
             <ChurchDialog cities={ctx.cities.map((x) => ({ value: x.$id, label: x.name }))} isSuperAdmin={ctx.isSuperAdmin}
-              church={{ id: c.$id, name: c.name, cityId: c.cityId, address: c.address, pastorName: c.pastorName, refPrefix: c.refPrefix, isMother: c.isMother, allowLocalLists: c.allowLocalLists }} />
+              church={{ id: c.$id, name: c.name, cityId: c.cityId, address: c.address, pastorName: c.pastorName, refPrefix: c.refPrefix, isMother: c.isMother, allowLocalLists: c.allowLocalLists, logoUrl: logoUrl(c) }} />
             {!c.isMother && (
               <ActionButton variant={c.active ? "danger-soft" : "soft"} action={toggleChurchActiveAction} payload={{ id: c.$id }} confirm={c.active ? "Archiver cette église ? Ses données sont conservées." : undefined}>
                 {c.active ? "Archiver" : "Réactiver"}

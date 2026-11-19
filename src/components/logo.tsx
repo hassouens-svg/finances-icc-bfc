@@ -17,10 +17,10 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ className, subtitle = true }: { className?: string; subtitle?: boolean }) {
+export function Logo({ className, subtitle = true, image }: { className?: string; subtitle?: boolean; image?: React.ReactNode }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <LogoMark />
+      {image ?? <LogoMark />}
       <div className="leading-tight">
         <p className="text-[15px] font-semibold tracking-tight">ICC Finances</p>
         {subtitle && <p className="text-[12px] text-muted">Bourgogne-Franche-Comté</p>}

@@ -6,14 +6,16 @@ import { Bell, ChevronsUpDown, Check, Building2, Globe2, LogOut, Moon, Sun, Plus
 import { Dialog as D } from "radix-ui";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/format";
-import { LogoMark, Logo } from "@/components/logo";
+import { Logo } from "@/components/logo";
+import { ChurchLogo } from "@/components/church-logo";
 import { Dropdown, DropdownContent, DropdownItem, DropdownLabel, DropdownSeparator, DropdownTrigger } from "@/components/ui/dropdown";
 import { NAV, MOBILE_TABS, isActive, type NavItem } from "./nav";
 import { setViewAction, logoutAction } from "@/server/actions/auth";
 
 export type ShellProps = {
   user: { name: string; email: string; roleLabel: string };
-  churches: { id: string; name: string; isMother: boolean; city?: string }[];
+  churches: { id: string; name: string; isMother: boolean; city?: string; logo?: string | null }[];
+  brandLogo?: string | null;
   view: string;
   isRegional: boolean;
   canAdmin: boolean;
@@ -87,9 +89,14 @@ function ChurchSwitcher({ churches, view, isRegional, compact }: Pick<ShellProps
         )}
         aria-label="Changer d'église ou de vue"
       >
-        <span className={cn("grid size-6 shrink-0 place-items-center rounded-lg", view === "all" ? "bg-accent text-white" : "bg-accent-soft text-accent")}>
-          {view === "all" ? <Globe2 className="size-3.5" /> : <Building2 className="size-3.5" />}
-        </span>
+        {current?.logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current.logo} alt="" className="size-6 shrink-0 rounded-lg object-cover" />
+        ) : (
+          <span className={cn("grid size-6 shrink-0 place-items-center rounded-lg", view === "all" ? "bg-accent text-white" : "bg-accent-soft text-accent")}>
+            {view === "all" ? <Globe2 className="size-3.5" /> : <Building2 className="size-3.5" />}
+          </span>
+        )}
         <span className="truncate">{view === "all" ? "Toutes les églises" : current?.name}</span>
         <ChevronsUpDown className="ml-auto size-4 shrink-0 text-muted" />
       </DropdownTrigger>
@@ -106,7 +113,8 @@ function ChurchSwitcher({ churches, view, isRegional, compact }: Pick<ShellProps
         <DropdownLabel>Églises</DropdownLabel>
         {churches.map((c) => (
           <DropdownItem key={c.id} onSelect={() => choose(c.id)}>
-            <Building2 />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {c.logo ? <img src={c.logo} alt="" className="size-5 rounded-md object-cover" /> : <Building2 />}
             <span className="truncate">{c.name}</span>
             {c.isMother && <span className="rounded-md bg-accent-soft px-1.5 text-[11px] font-medium text-accent-strong">Mère</span>}
             {view === c.id && <Check className="ml-auto !text-accent" />}
@@ -205,7 +213,7 @@ export function Shell(p: ShellProps) {
       {/* Sidebar (ordinateur) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[264px] flex-col border-r border-border bg-bg lg:flex">
         <div className="px-4 pb-3 pt-5">
-          <Link href="/app"><Logo /></Link>
+          <Link href="/app"><Logo image={<ChurchLogo src={p.brandLogo} alt="Logo de l'église mère" />} /></Link>
         </div>
         <div className="px-3 pb-3">
           <ChurchSwitcher churches={p.churches} view={p.view} isRegional={p.isRegional} />
@@ -221,7 +229,7 @@ export function Shell(p: ShellProps) {
       {/* En-tête */}
       <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur-md lg:ml-[264px]">
         <div className="flex h-14 items-center gap-2 px-4 sm:px-6 lg:h-16 lg:px-8">
-          <Link href="/app" className="lg:hidden" aria-label="Accueil"><LogoMark className="size-8" /></Link>
+          <Link href="/app" className="lg:hidden" aria-label="Accueil"><ChurchLogo src={p.brandLogo} alt="Accueil" className="size-8 rounded-[9px]" /></Link>
           <div className="min-w-0 lg:hidden">
             <ChurchSwitcher churches={p.churches} view={p.view} isRegional={p.isRegional} compact />
           </div>

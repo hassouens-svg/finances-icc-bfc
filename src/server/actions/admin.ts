@@ -7,6 +7,7 @@ import { run, UserError, formToObject } from "../action";
 import { insert, patch, audit, permsFor, adminGet, adminList, regionPermissions, revalidateApp } from "../data";
 import { issuePasswordToken, randomToken } from "../tokens";
 import { sendEmail, emailLayout } from "../notify";
+import { saveLogo } from "../logo";
 import { zText, zOptText, zBool, zId, zEmail, zOptCents, zDate, zCents } from "@/lib/zod";
 import { MOTHER_TEAM_ID, REGION } from "@/lib/schema";
 import type { ActionResult } from "@/lib/action-types";
@@ -63,6 +64,8 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
         data: { name: d.name, cityId: d.cityId, address: d.address, pastorName: d.pastorName, refPrefix: d.refPrefix, isMother, allowLocalLists: d.allowLocalLists, parentChurchId: isMother ? null : mother && mother.$id !== d.id ? mother.$id : before.parentChurchId },
       });
       if (isMother && !before.isMother) await setMotherFlags(d.id);
+      const logo = fd.get("logo");
+      if (logo instanceof File && logo.size > 0) await patch("churches", d.id, { logoFileId: await saveLogo(logo, before.logoFileId) });
       try { await teams.updateName({ teamId: before.teamId, name: d.name }); } catch {}
       await audit(ctx, d.id, "update", "church", d.id, `Église modifiée : ${d.name}`, before, d);
       revalidateApp();
@@ -83,6 +86,8 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
       permissions: regionPermissions(),
     });
     if (d.isMother) await setMotherFlags(id);
+    const logo = fd.get("logo");
+    if (logo instanceof File && logo.size > 0) await patch("churches", id, { logoFileId: await saveLogo(logo) });
     await audit(ctx, id, "create", "church", id, `Église créée : ${d.name}`, null, d);
     revalidateApp();
     return { ok: true, message: `Église « ${d.name} » créée.`, redirect: `/app/admin/eglises/${id}` };
@@ -118,35 +123,45 @@ const inviteSchema = z.object({
   email: zEmail().transform((v) => v.toLowerCase()),
   name: zText("Le nom", 160),
   churchId: z.string().min(1, "Choisissez une église."),
-  roles: z.array(z.enum(["treasurer", "pastor", "reader", "mother_admin"])).min(1, "Choisissez au moins un rôle."),
+  roles: z.array(z.enum(["treasurer", "pastor", "reader", "mother_admin", "superadmin"])).min(1, "Choisissez au moins un rôle."),
+  password: z.union([z.literal(""), z.string().min(10, "Le mot de passe doit faire 10 caractères minimum.")]).optional(),
 });
 
 export async function inviteUserAction(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const ctx = await requireContext();
     const raw = formToObject(fd);
-    const d = inviteSchema.parse({ ...raw, roles: raw.roles ?? [] });
+    const d = inviteSchema.parse({ ...raw, roles: raw.roles ?? [], churchId: raw.churchId || (Array.isArray(raw.roles) && (raw.roles as string[]).some((r) => r === "superadmin" || r === "mother_admin") ? "-" : "") });
     const wantsMother = d.roles.includes("mother_admin");
+    const wantsSuper = d.roles.includes("superadmin");
+    if (wantsSuper && !ctx.isSuperAdmin) throw new ForbiddenError("Seul un super administrateur peut en créer un autre.");
     if (wantsMother) assertRegional(ctx);
     if (!ctx.isRegional) throw new ForbiddenError("Seule l'église mère peut inviter des utilisateurs.");
     const church = ctx.allChurches.find((c) => c.$id === d.churchId);
-    if (!church && !wantsMother) throw new UserError("Église introuvable.");
+    if (!church && !wantsMother && !wantsSuper) throw new UserError("Église introuvable.");
 
     const { users, teams } = adminClient();
     const existing = (await users.list({ queries: [Query.equal("email", d.email), Query.limit(1)] })).users[0];
     let userId = existing?.$id;
     let isNew = false;
     if (!userId) {
-      const u = await users.create({ userId: ID.unique(), email: d.email, password: randomToken(24) + "aA1!", name: d.name });
+      const u = await users.create({ userId: ID.unique(), email: d.email, password: d.password || randomToken(24) + "aA1!", name: d.name });
       userId = u.$id;
       isNew = true;
+    } else if (d.password) {
+      await users.updatePassword({ userId, password: d.password });
     }
-    const churchRoles = d.roles.filter((r) => r !== "mother_admin");
+    if (d.password) await users.updateEmailVerification({ userId, emailVerification: true });
+    if (wantsSuper) {
+      const u = await users.get({ userId });
+      await users.updateLabels({ userId, labels: [...new Set([...(u.labels ?? []), "superadmin"])] });
+    }
+    const churchRoles = d.roles.filter((r) => r !== "mother_admin" && r !== "superadmin");
     if (church && churchRoles.length) await upsertMembership(church.teamId, userId, churchRoles);
     if (wantsMother) await upsertMembership(MOTHER_TEAM_ID, userId, ["admin"]);
 
     let link: string | null = null;
-    if (isNew) {
+    if (isNew && !d.password) {
       link = await issuePasswordToken(userId, "invite");
       await sendEmail({
         to: d.email,
@@ -162,7 +177,7 @@ export async function inviteUserAction(_: ActionResult | null, fd: FormData): Pr
     revalidateApp();
     return {
       ok: true,
-      message: isNew ? "Invitation créée." : "Rôles ajoutés à l'utilisateur existant.",
+      message: d.password ? "Compte créé : la personne peut se connecter avec ce mot de passe." : isNew ? "Invitation créée." : "Rôles ajoutés à l'utilisateur existant.",
       data: link ? { link } : undefined,
     };
   });
@@ -394,5 +409,21 @@ export async function saveSettingsAction(_: ActionResult | null, fd: FormData): 
     await audit(ctx, REGION, "update", "settings", null, "Paramètres d'alerte modifiés", null, values);
     revalidateApp();
     return { ok: true, message: "Paramètres enregistrés." };
+  });
+}
+
+export async function toggleSuperAdminAction(fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireContext();
+    if (!ctx.isSuperAdmin) throw new ForbiddenError("Réservé au super administrateur.");
+    const userId = String(fd.get("userId"));
+    if (userId === ctx.user.id) throw new UserError("Vous ne pouvez pas retirer vos propres droits.");
+    const { users } = adminClient();
+    const u = await users.get({ userId });
+    const has = u.labels?.includes("superadmin");
+    await users.updateLabels({ userId, labels: has ? (u.labels ?? []).filter((l) => l !== "superadmin") : [...(u.labels ?? []), "superadmin"] });
+    await audit(ctx, REGION, "update", "user", userId, `${has ? "Retrait" : "Attribution"} du rôle super administrateur : ${u.email}`);
+    revalidateApp();
+    return { ok: true, message: has ? "Droits super administrateur retirés." : "Droits super administrateur accordés." };
   });
 }

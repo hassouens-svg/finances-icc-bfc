@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { InviteDialog, RolesDialog } from "@/components/admin/forms";
 import { ActionButton } from "@/components/action-form";
-import { toggleUserAction } from "@/server/actions/admin";
+import { toggleUserAction, toggleSuperAdminAction } from "@/server/actions/admin";
 import { ResendInviteButton } from "./resend";
 import { ROLE_LABELS } from "@/lib/status";
 import { initials, formatDate } from "@/lib/format";
@@ -29,7 +29,7 @@ export default async function UsersPage() {
         back={{ href: "/app/admin", label: "Administration" }}
         title="Utilisateurs"
         description="Un utilisateur peut avoir des rôles différents dans plusieurs églises."
-        actions={<InviteDialog churches={ctx.allChurches.map((c) => ({ value: c.$id, label: c.name }))} canMother={ctx.isRegional} />}
+        actions={<InviteDialog churches={ctx.allChurches.map((c) => ({ value: c.$id, label: c.name }))} canMother={ctx.isRegional} canSuper={ctx.isSuperAdmin} />}
       />
       <Card className="divide-y divide-border">
         {list.map((u) => {
@@ -61,6 +61,11 @@ export default async function UsersPage() {
               </div>
               <div className="flex gap-2 sm:flex-col">
                 {pending && <ResendInviteButton userId={u.$id} />}
+                {ctx.isSuperAdmin && u.$id !== ctx.user.id && (
+                  <ActionButton size="sm" variant="ghost" action={toggleSuperAdminAction} payload={{ userId: u.$id }} confirm={u.labels?.includes("superadmin") ? "Retirer les droits de super administrateur ?" : `Donner TOUS les droits à ${u.email} ?`}>
+                    {u.labels?.includes("superadmin") ? "Retirer super admin" : "Rendre super admin"}
+                  </ActionButton>
+                )}
                 {u.$id !== ctx.user.id && (
                   <ActionButton size="sm" variant={u.status ? "danger-soft" : "soft"} action={toggleUserAction} payload={{ userId: u.$id }} confirm={u.status ? `Désactiver ${u.email} ? Ses sessions seront fermées.` : undefined}>
                     {u.status ? "Désactiver" : "Réactiver"}

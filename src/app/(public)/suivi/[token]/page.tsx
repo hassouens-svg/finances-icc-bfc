@@ -9,6 +9,7 @@ import { Timeline } from "@/components/ui/timeline";
 import { DetailList } from "@/components/detail/blocks";
 import { CopyButton } from "@/components/copy-button";
 import { PublicShell } from "../../public-shell";
+import { logoUrl } from "@/lib/logo";
 import { formatEuro, formatDate } from "@/lib/format";
 import type { Church, FundingRequest, Reimbursement } from "@/lib/types";
 
@@ -28,7 +29,7 @@ export default async function TrackingPage({ params, searchParams }: { params: P
   const [timeline, atts] = await Promise.all([getTimeline(entity, item.$id, false), getAttachments(entity, item.$id)]);
   const url = `${process.env.APP_URL ?? ""}/suivi/${token}`;
   return (
-    <PublicShell church={church?.name}>
+    <PublicShell church={church?.name} logo={logoUrl(church)}>
       {isNew && (
         <div className="mb-5 flex items-start gap-3 rounded-2xl border border-success/30 bg-success-soft p-4 text-success">
           <CheckCircle2 className="mt-0.5 size-5 shrink-0" />

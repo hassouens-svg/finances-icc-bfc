@@ -1,10 +1,11 @@
 import { Logo } from "@/components/logo";
+import { ChurchLogo } from "@/components/church-logo";
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <main className="grid min-h-dvh lg:grid-cols-[1fr_1.05fr]">
       <div className="flex flex-col px-6 py-8 sm:px-12">
-        <Logo />
+        <Logo image={<ChurchLogo src="/api/logo/mother" alt="Logo de l'église mère" className="size-11" />} />
         <div className="mx-auto flex w-full max-w-[380px] flex-1 flex-col justify-center py-12 animate-fade-up">{children}</div>
         <p className="text-[12px] text-muted">© {new Date().getFullYear()} Impact Centre Chrétien · Usage interne</p>
       </div>
@@ -19,6 +20,8 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
         <div className="relative flex h-full flex-col justify-end p-14 text-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/api/logo/mother" alt="" className="absolute left-14 top-14 size-24 rounded-3xl object-cover shadow-2xl ring-1 ring-white/10" />
           <div className="mb-10 grid max-w-md grid-cols-2 gap-3">
             {[
               ["Argent entré", "12 480,00 €", "+8 %"],

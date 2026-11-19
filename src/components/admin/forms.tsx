@@ -37,9 +37,25 @@ export function CityDialog({ city }: { city?: { id: string; name: string; region
   );
 }
 
+function LogoPicker({ current }: { current?: string | null }) {
+  const [preview, setPreview] = React.useState<string | null>(current ?? null);
+  return (
+    <Field label="Logo de l'église" optional hint="JPG, PNG ou WEBP carré de préférence — 2 Mo max.">
+      <label className="flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-border bg-surface p-3 hover:border-accent/50">
+        <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-bg">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {preview ? <img src={preview} alt="Aperçu du logo" className="size-full object-cover" /> : <span className="text-[11px] text-muted">Aucun</span>}
+        </span>
+        <span className="text-[14px] font-medium">{preview ? "Changer le logo" : "Choisir une image"}</span>
+        <input type="file" name="logo" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) setPreview(URL.createObjectURL(f)); }} />
+      </label>
+    </Field>
+  );
+}
+
 export function ChurchDialog({
   church, cities, isSuperAdmin,
-}: { church?: { id: string; name: string; cityId?: string | null; address?: string | null; pastorName?: string | null; refPrefix: string; isMother: boolean; allowLocalLists: boolean }; cities: Opt[]; isSuperAdmin: boolean }) {
+}: { church?: { id: string; name: string; cityId?: string | null; address?: string | null; pastorName?: string | null; refPrefix: string; isMother: boolean; allowLocalLists: boolean; logoUrl?: string | null }; cities: Opt[]; isSuperAdmin: boolean }) {
   return (
     <FormDialog
       trigger={church ? <><Pencil /> Modifier</> : <><Plus /> Nouvelle église</>}
@@ -63,6 +79,7 @@ export function ChurchDialog({
       </div>
       <FieldErr name="address" label="Adresse" optional><Input id="address" name="address" defaultValue={church?.address ?? ""} /></FieldErr>
       <FieldErr name="pastorName" label="Pasteur / responsable" optional><Input id="pastorName" name="pastorName" defaultValue={church?.pastorName ?? ""} /></FieldErr>
+      <LogoPicker current={church?.logoUrl} />
       <div className="space-y-2.5 rounded-xl bg-surface p-3.5">
         <Checkbox name="allowLocalLists" label="Autoriser cette église à ajouter ses propres catégories et types" defaultChecked={church?.allowLocalLists ?? true} />
         {isSuperAdmin && <Checkbox name="isMother" label="Église mère régionale (pilote les autres églises)" defaultChecked={church?.isMother} />}
@@ -71,7 +88,7 @@ export function ChurchDialog({
   );
 }
 
-export function InviteDialog({ churches, defaultChurchId, canMother }: { churches: Opt[]; defaultChurchId?: string; canMother: boolean }) {
+export function InviteDialog({ churches, defaultChurchId, canMother, canSuper = false }: { churches: Opt[]; defaultChurchId?: string; canMother: boolean; canSuper?: boolean }) {
   const [link, setLink] = React.useState<string | null>(null);
   const [open, setOpen] = React.useState(false);
   const roles = [
@@ -81,9 +98,9 @@ export function InviteDialog({ churches, defaultChurchId, canMother }: { churche
   ];
   return (
     <>
-      <Button onClick={() => { setLink(null); setOpen(true); }}><Plus /> Inviter</Button>
+      <Button onClick={() => { setLink(null); setOpen(true); }}><Plus /> Créer un compte</Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Inviter un utilisateur" description="La personne reçoit un lien pour choisir son mot de passe.">
+        <DialogContent title="Créer un compte" description="Choisissez un mot de passe maintenant, ou laissez vide pour envoyer un lien d'invitation.">
           {link ? (
             <div className="space-y-4">
               <p className="text-[14px]">Invitation créée. Si l&apos;email n&apos;arrive pas, envoyez ce lien (WhatsApp, SMS…) — il est valable 7 jours :</p>
@@ -97,9 +114,12 @@ export function InviteDialog({ churches, defaultChurchId, canMother }: { churche
             <ActionForm action={inviteUserAction} onSuccess={(r: ActionResult) => { if (r.ok && r.data?.link) setLink(String(r.data.link)); else setOpen(false); }} className="space-y-4">
               <FieldErr name="name" label="Nom complet"><Input id="name" name="name" required /></FieldErr>
               <FieldErr name="email" label="Email"><Input id="email" name="email" type="email" required /></FieldErr>
-              <FieldErr name="churchId" label="Église">
-                <Select id="churchId" name="churchId" defaultValue={defaultChurchId ?? ""} required>
-                  <option value="" disabled>Choisir…</option>
+              <FieldErr name="password" label="Mot de passe" optional hint="10 caractères minimum. Vide = lien d'invitation à transmettre.">
+                <Input id="password" name="password" type="text" autoComplete="off" minLength={10} />
+              </FieldErr>
+              <FieldErr name="churchId" label="Église" hint={canMother ? "Facultatif pour un administrateur église mère ou un super administrateur." : undefined}>
+                <Select id="churchId" name="churchId" defaultValue={defaultChurchId ?? ""} required={!canMother}>
+                  <option value="">{canMother ? "Aucune église précise" : "Choisir…"}</option>
                   {churches.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </Select>
               </FieldErr>
@@ -117,10 +137,16 @@ export function InviteDialog({ churches, defaultChurchId, canMother }: { churche
                     <span><span className="block text-[14px] font-medium">Administrateur église mère</span><span className="text-[13px] text-muted">Voit et pilote toutes les églises de la région</span></span>
                   </label>
                 )}
+                {canSuper && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50">
+                    <input type="checkbox" name="roles[]" value="superadmin" className="mt-0.5 size-[18px] accent-[var(--accent)]" />
+                    <span><span className="block text-[14px] font-medium">Super administrateur</span><span className="text-[13px] text-muted">Tous les droits : églises, comptes, paramètres, journaux</span></span>
+                  </label>
+                )}
               </fieldset>
               <div className="flex justify-end gap-2 pt-1">
                 <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-                <SubmitButton>Envoyer l&apos;invitation</SubmitButton>
+                <SubmitButton>Créer le compte</SubmitButton>
               </div>
             </ActionForm>
           )}

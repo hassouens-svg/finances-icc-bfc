@@ -6,6 +6,7 @@ import { Card, CardHeader, Section } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ChurchDialog, CityDialog } from "@/components/admin/forms";
+import { logoUrl } from "@/lib/logo";
 
 export const metadata = { title: "Villes & églises" };
 
@@ -35,9 +36,14 @@ export default async function ChurchesPage() {
                   <Card className="divide-y divide-border">
                     {churches.map((c) => (
                       <Link key={c.$id} href={`/app/admin/eglises/${c.$id}`} className="flex items-center gap-3 px-4 py-3.5 hover:bg-surface">
-                        <span className={`grid size-10 place-items-center rounded-xl ${c.isMother ? "bg-accent text-white" : "bg-surface-2 text-muted"}`}>
-                          {c.isMother ? <Crown className="size-5" /> : <Building2 className="size-5" />}
-                        </span>
+                        {logoUrl(c) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={logoUrl(c)!} alt={`Logo ${c.name}`} className="size-10 rounded-xl border border-border object-cover" />
+                        ) : (
+                          <span className={`grid size-10 place-items-center rounded-xl ${c.isMother ? "bg-accent text-white" : "bg-surface-2 text-muted"}`}>
+                            {c.isMother ? <Crown className="size-5" /> : <Building2 className="size-5" />}
+                          </span>
+                        )}
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2 text-[15px] font-medium">{c.name}{c.isMother && <Badge tone="progress" dot={false}>Église mère</Badge>}{!c.active && <Badge tone="neutral" dot={false}>Archivée</Badge>}</span>
                           <span className="block text-[13px] text-muted">Préfixe {c.refPrefix}{c.pastorName ? ` · ${c.pastorName}` : ""}</span>

@@ -53,6 +53,9 @@ npm run seed            # ajoute les données si la base est vide
 npm run seed -- --reset # efface TOUT puis recrée la démo
 ```
 
+> `--reset` efface toutes les données et les comptes `@example.com`, mais **conserve les autres comptes** (votre super administrateur).
+> Les logos placés dans `public/brand/icc-<slug>.jpg` (ex. `icc-dijon.jpg`) sont chargés automatiquement.
+
 Dijon (église mère) + Besançon, Chalon-sur-Saône, Auxerre ; 3 mois d'offrandes, dépenses, dépôts ; remboursements, besoins, demandes Cité Royale, un projet avec budget.
 
 **Comptes de démo** — mot de passe : `Demo-ICC-2026!`
@@ -86,9 +89,17 @@ Ouvrez http://localhost:3000 : la page d'accueil **est** la page de connexion.
 
 ## 7. Premiers pas (super administrateur)
 
-1. **Administration › Villes & églises** : créez la ville, l'église **Dijon** et cochez « Église mère ».
+0. Créez votre compte super administrateur (une seule fois) :
+   ```bash
+   npm run create-superadmin -- votre@email.fr "Prénom Nom"
+   ```
+   Un mot de passe provisoire s'affiche : changez-le dans **Mon compte** après la première connexion.
+   Un super administrateur peut ensuite en désigner d'autres (Utilisateurs › « Rendre super admin »).
+1. **Administration › Villes & églises** : créez la ville, l'église **Dijon** (avec son **logo**) et cochez « Église mère ». Le logo de l'église mère s'affiche sur la page de connexion, dans la barre latérale et sur les formulaires publics ; chaque église peut avoir son propre logo.
 2. Créez les églises filles (préfixe de référence : 2 à 5 lettres, ex. `BES`).
-3. **Utilisateurs › Inviter** : choisissez l'église et le rôle. Si l'email n'arrive pas, copiez le lien d'invitation (valable 7 jours) et envoyez-le par WhatsApp.
+3. **Utilisateurs › Créer un compte** : choisissez l'église et le rôle. Deux possibilités :
+   - saisir un **mot de passe** tout de suite (pratique tant que les emails ne sont pas branchés) ;
+   - laisser vide : un **lien d'invitation** (valable 7 jours) est créé, à copier et envoyer par WhatsApp si l'email n'arrive pas.
 4. Chaque trésorier : **Comptes bancaires**, **Départements**, puis **Liens publics** (besoins + remboursements, avec QR code).
 5. L'église mère règle les **Circuits de validation** et les **Alertes**.
 

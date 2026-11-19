@@ -3,6 +3,7 @@ import { Link2Off } from "lucide-react";
 import { adminList, adminGet } from "@/server/data";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PublicShell } from "../../public-shell";
+import { logoUrl } from "@/lib/logo";
 import { PublicForm } from "./public-form";
 import type { Church, Department, PublicLink } from "@/lib/types";
 
@@ -19,7 +20,7 @@ export default async function PublicLinkPage({ params }: { params: Promise<{ tok
   const deps = await adminList<Department>("departments", [Query.equal("churchId", church.$id), Query.equal("archived", false), Query.orderAsc("name")]);
   const fixedDep = link.departmentId ? deps.find((d) => d.$id === link.departmentId) : undefined;
   return (
-    <PublicShell church={church.name}>
+    <PublicShell church={church.name} logo={logoUrl(church)}>
       <h1 className="text-[24px] font-semibold tracking-tight">{link.kind === "funding" ? "Exprimer un besoin" : "Demander un remboursement"}</h1>
       <p className="mb-6 mt-1 text-[15px] text-muted">
         {link.kind === "funding" ? `Votre demande sera étudiée par la trésorerie de ${church.name}${fixedDep ? ` pour le département ${fixedDep.name}` : ""}.` : `Pour une dépense que vous avez avancée pour ${church.name}. Joignez obligatoirement la photo du justificatif.`}
