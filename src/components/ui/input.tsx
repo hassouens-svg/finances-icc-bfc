@@ -12,7 +12,7 @@ export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<H
   return <textarea className={cn(fieldBase, "min-h-24 py-2.5 leading-relaxed", className)} {...props} />;
 }
 
-export function Select({ className, children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ className, children, ...props }: React.ComponentProps<"select">) {
   return (
     <div className="relative">
       <select className={cn(fieldBase, "h-11 appearance-none pr-10", className)} {...props}>
@@ -32,13 +32,21 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 export function Field({
   label, hint, error, children, className, htmlFor, optional,
 }: { label: React.ReactNode; hint?: React.ReactNode; error?: string; children: React.ReactNode; className?: string; htmlFor?: string; optional?: boolean }) {
+  const auto = React.useId();
+  // Associe automatiquement le libellé au champ (accessibilité + lecteurs d'écran)
+  let id = htmlFor;
+  let content = children;
+  if (React.isValidElement<{ id?: string }>(children) && typeof children.type !== "symbol") {
+    id = children.props.id ?? htmlFor ?? auto;
+    if (!children.props.id) content = React.cloneElement(children, { id });
+  }
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={htmlFor}>
+      <Label htmlFor={id}>
         {label}
         {optional && <span className="ml-1 font-normal text-muted">(facultatif)</span>}
       </Label>
-      {children}
+      {content}
       {error ? <p className="text-[13px] text-danger">{error}</p> : hint ? <p className="text-[13px] text-muted">{hint}</p> : null}
     </div>
   );

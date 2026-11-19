@@ -67,7 +67,7 @@ export default async function CrPage({ searchParams }: { searchParams: Promise<{
           filters={[{ key: "status", label: "Statut", options: Object.entries(STATUS.cr_request!).map(([value, d]) => ({ value, label: d.label })) }]} />
       ) : (
         <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0">
-          <div className="grid w-max grid-flow-col gap-3 [grid-auto-columns:minmax(260px,1fr)] lg:w-full">
+          <div className="grid w-max grid-flow-col gap-3 [grid-auto-columns:minmax(260px,1fr)] xl:w-full xl:grid-flow-row xl:grid-cols-6">
             {COLUMNS.map(([label, statuses]) => {
               const col = items.filter((c) => statuses.includes(c.status));
               return (

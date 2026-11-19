@@ -74,6 +74,8 @@
     -webkit-font-smoothing: antialiased;
   }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  /* Les enfants de grille peuvent rétrécir : les zones défilantes internes ne font pas déborder la page. */
+  .grid > * { min-width: 0; }
   ::selection { background: var(--accent-soft); color: var(--accent-strong); }
   input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 }

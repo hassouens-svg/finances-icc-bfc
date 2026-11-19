@@ -1,6 +1,7 @@
 import { requireContext, canManage } from "@/server/context";
 import { getShellCounts } from "@/server/counts";
 import { Shell } from "@/components/shell/shell";
+import { RealtimeRefresher } from "@/components/realtime";
 import { ROLE_LABELS } from "@/lib/status";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       unread={counts.unread}
       badges={counts.badges}
     >
+      <RealtimeRefresher />
       {children}
     </Shell>
   );

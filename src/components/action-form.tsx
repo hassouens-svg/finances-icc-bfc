@@ -17,17 +17,22 @@ export function ActionForm({
 }: { action: Action; children: React.ReactNode; className?: string; onSuccess?: (r: ActionResult) => void; successMessage?: string; resetOnSuccess?: boolean; id?: string }) {
   const router = useRouter();
   const formRef = React.useRef<HTMLFormElement>(null);
-  const [state, formAction] = React.useActionState(action, null);
+  // Le message est affiché dès la réponse du serveur : il reste visible même si le formulaire disparaît ensuite.
+  const wrapped = React.useCallback(async (prev: ActionResult | null, fd: FormData) => {
+    const r = await action(prev, fd);
+    if (r.ok) {
+      if (r.message || successMessage) toast.success(r.message ?? successMessage);
+    } else toast.error(r.error);
+    return r;
+  }, [action, successMessage]);
+  const [state, formAction] = React.useActionState(wrapped, null);
   React.useEffect(() => {
     if (!state) return;
     if (state.ok) {
-      if (state.message || successMessage) toast.success(state.message ?? successMessage);
       if (resetOnSuccess) formRef.current?.reset();
       onSuccess?.(state);
       if (state.redirect) router.push(state.redirect);
       else router.refresh();
-    } else {
-      toast.error(state.error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);

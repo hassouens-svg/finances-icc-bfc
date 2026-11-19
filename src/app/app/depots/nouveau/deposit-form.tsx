@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 type S = { id: string; reference: string; date: string; serviceName?: string | null; cashCents: number; cheques: { id: string; amountCents: number; ref?: string | null; donor?: string | null }[] };
 
-export function DepositForm({ churchId, accounts, sessions }: { churchId: string; accounts: { id: string; label: string }[]; sessions: S[] }) {
+export function DepositForm({ churchId, accounts, sessions, cashInHand }: { churchId: string; accounts: { id: string; label: string }[]; sessions: S[]; cashInHand: number }) {
   const [mode, setMode] = React.useState<"sessions" | "free">(sessions.length ? "sessions" : "free");
   const [selected, setSelected] = React.useState<string[]>(sessions.map((s) => s.id));
   const [excluded, setExcluded] = React.useState<string[]>([]);
@@ -93,6 +93,8 @@ export function DepositForm({ churchId, accounts, sessions }: { churchId: string
             <div className="flex justify-between"><span className="text-muted">Espèces</span><span className="num">{formatEuro(cash)}</span></div>
             <div className="flex justify-between"><span className="text-muted">Chèques {mode === "sessions" ? `(${chequeList.length})` : ""}</span><span className="num">{formatEuro(cheque)}</span></div>
             <div className="flex justify-between border-t border-border pt-3 text-[17px] font-semibold"><span>Total déposé</span><span className="num text-accent">{formatEuro(cash + cheque)}</span></div>
+            <div className="flex justify-between text-[13px]"><span className="text-muted">En caisse actuellement</span><span className="num">{formatEuro(cashInHand)}</span></div>
+            {cash + cheque > cashInHand && <p className="rounded-xl bg-warning-soft px-3 py-2 text-[12px] font-medium text-warning">Le dépôt dépasse l&apos;argent en caisse (des dépenses ont peut-être été payées en espèces). Vérifiez le montant réellement remis à la banque.</p>}
             <p className="text-[12px] text-muted">Une fois « Déposé », la caisse diminue et la banque augmente du même montant.</p>
             <SubmitButton size="lg" className="w-full" disabled={cash + cheque <= 0}>Enregistrer le dépôt</SubmitButton>
           </CardBody>

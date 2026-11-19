@@ -11,7 +11,8 @@
     "seed": "tsx scripts/seed.ts",
     "test": "vitest run",
     "test:e2e": "playwright test --trace off",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:isolation": "tsx scripts/test-isolation.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.7",

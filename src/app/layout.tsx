@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { SwRegister } from "@/components/sw-register";
 
 export const metadata: Metadata = {
   title: { default: "ICC BFC Finances", template: "%s · ICC BFC Finances" },
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         {children}
+        <SwRegister />
         <Toaster position="top-center" richColors closeButton toastOptions={{ style: { borderRadius: 14, fontFamily: "var(--font-geist-sans)" } }} />
       </body>
     </html>
