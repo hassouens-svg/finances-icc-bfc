@@ -236,7 +236,7 @@ export function Shell(p: ShellProps) {
         <div className="mx-auto w-full max-w-[1240px] px-4 pb-32 pt-5 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">{p.children}</div>
       </main>
 
-      {p.canWrite && <Fab />}
+      {p.canWrite && !/\/(nouvelle|nouveau|modifier)$/.test(pathname) && <Fab />}
 
       {/* Barre du bas (téléphone) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 pb-safe backdrop-blur-md lg:hidden" aria-label="Navigation mobile">

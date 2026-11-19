@@ -2,25 +2,14 @@ import "server-only";
 import { ID, Permission, Role, AppwriteException } from "node-appwrite";
 import { revalidatePath } from "next/cache";
 import { adminClient, userClient, listAll, getRow, Query, DATABASE_ID } from "@/lib/appwrite/server";
-import { MOTHER_TEAM_ID, REGION } from "@/lib/schema";
+import { REGION } from "@/lib/schema";
 import { getAllChurches, type AppContext, ForbiddenError } from "./context";
 import { monthKey } from "@/lib/period";
 import type { Church, Row } from "@/lib/types";
 
 // ---------------- Permissions de ligne ----------------
-export function churchPermissions(church: Pick<Church, "teamId">) {
-  return [
-    Permission.read(Role.team(church.teamId)),
-    Permission.read(Role.team(MOTHER_TEAM_ID)),
-    Permission.read(Role.label("superadmin")),
-    Permission.update(Role.team(church.teamId, "treasurer")),
-    Permission.update(Role.team(MOTHER_TEAM_ID, "admin")),
-    Permission.update(Role.label("superadmin")),
-  ];
-}
-export function regionPermissions() {
-  return [Permission.read(Role.users()), Permission.update(Role.team(MOTHER_TEAM_ID, "admin")), Permission.update(Role.label("superadmin"))];
-}
+import { churchPermissions, regionPermissions } from "@/lib/perms";
+export { churchPermissions, regionPermissions };
 export function userOnlyPermissions(userId: string) {
   return [Permission.read(Role.user(userId)), Permission.update(Role.user(userId))];
 }

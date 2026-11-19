@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { fieldBase } from "./input";
 
 /** Champ montant : clavier numérique, saisie en euros (virgule acceptée). */
-export function AmountInput({ className, size = "md", ...props }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & { size?: "md" | "lg" }) {
+export function AmountInput({ className, size = "md", ...props }: Omit<React.ComponentProps<"input">, "size"> & { size?: "md" | "lg" }) {
   return (
     <div className="relative">
       <input

@@ -129,3 +129,10 @@ export function targetChurchId(ctx: AppContext, requested?: string | null) {
 export function churchName(ctx: AppContext, id: string) {
   return ctx.allChurches.find((c) => c.$id === id)?.name ?? "—";
 }
+
+/** Église ciblée par un écran propre à une église (paramètre ?church=, sinon vue, sinon première gérable). */
+export function pickChurch(ctx: AppContext, requested?: string, needManage = true) {
+  const allowed = ctx.churches.filter((c) => (needManage ? canManage(ctx, c.$id) : canRead(ctx, c.$id)));
+  const id = requested && allowed.some((c) => c.$id === requested) ? requested : ctx.view !== "all" && allowed.some((c) => c.$id === ctx.view) ? ctx.view : allowed[0]?.$id;
+  return { church: allowed.find((c) => c.$id === id) ?? null, allowed };
+}

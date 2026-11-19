@@ -1,0 +1,309 @@
+"use client";
+import * as React from "react";
+import { Plus, Pencil, Copy, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { FormDialog } from "@/components/form-dialog";
+import { Field, Input, Select, Checkbox } from "@/components/ui/input";
+import { AmountInput } from "@/components/ui/amount-input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ActionForm, SubmitButton, useFieldError } from "@/components/action-form";
+import { centsToInput, toDateInput } from "@/lib/format";
+import {
+  saveCityAction, saveChurchAction, inviteUserAction, saveDepartmentAction, saveListItemAction, saveBankAccountAction,
+  saveWorkflowAction, createPublicLinkAction, updateMemberRolesAction,
+} from "@/server/actions/admin";
+import type { ActionResult } from "@/lib/action-types";
+
+type Opt = { value: string; label: string };
+
+function FieldErr({ name, children, ...p }: { name: string; label: string; hint?: string; children: React.ReactNode; optional?: boolean }) {
+  const e = useFieldError(name);
+  return <Field {...p} error={e} htmlFor={name}>{children}</Field>;
+}
+
+export function CityDialog({ city }: { city?: { id: string; name: string; region?: string | null } }) {
+  return (
+    <FormDialog
+      trigger={city ? <><Pencil /> Modifier</> : <><Plus /> Nouvelle ville</>}
+      triggerProps={{ variant: city ? "ghost" : "secondary", size: city ? "sm" : "md" }}
+      title={city ? "Modifier la ville" : "Nouvelle ville"}
+      action={saveCityAction}
+    >
+      {city && <input type="hidden" name="id" value={city.id} />}
+      <FieldErr name="name" label="Nom de la ville"><Input id="name" name="name" defaultValue={city?.name} required /></FieldErr>
+      <FieldErr name="region" label="Région" optional><Input id="region" name="region" defaultValue={city?.region ?? "Bourgogne-Franche-Comté"} /></FieldErr>
+    </FormDialog>
+  );
+}
+
+export function ChurchDialog({
+  church, cities, isSuperAdmin,
+}: { church?: { id: string; name: string; cityId?: string | null; address?: string | null; pastorName?: string | null; refPrefix: string; isMother: boolean; allowLocalLists: boolean }; cities: Opt[]; isSuperAdmin: boolean }) {
+  return (
+    <FormDialog
+      trigger={church ? <><Pencil /> Modifier</> : <><Plus /> Nouvelle église</>}
+      triggerProps={{ variant: church ? "secondary" : "primary" }}
+      title={church ? "Modifier l'église" : "Nouvelle église"}
+      description={church ? undefined : "Une équipe (team) Appwrite est créée automatiquement pour cloisonner ses données."}
+      action={saveChurchAction}
+    >
+      {church && <input type="hidden" name="id" value={church.id} />}
+      <FieldErr name="name" label="Nom de l'église"><Input id="name" name="name" defaultValue={church?.name} placeholder="ICC Besançon" required /></FieldErr>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="cityId" label="Ville">
+          <Select id="cityId" name="cityId" defaultValue={church?.cityId ?? ""} required>
+            <option value="" disabled>Choisir…</option>
+            {cities.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </Select>
+        </FieldErr>
+        <FieldErr name="refPrefix" label="Préfixe des références" hint="2 à 5 lettres, ex. BES">
+          <Input id="refPrefix" name="refPrefix" defaultValue={church?.refPrefix} maxLength={5} className="uppercase" required />
+        </FieldErr>
+      </div>
+      <FieldErr name="address" label="Adresse" optional><Input id="address" name="address" defaultValue={church?.address ?? ""} /></FieldErr>
+      <FieldErr name="pastorName" label="Pasteur / responsable" optional><Input id="pastorName" name="pastorName" defaultValue={church?.pastorName ?? ""} /></FieldErr>
+      <div className="space-y-2.5 rounded-xl bg-surface p-3.5">
+        <Checkbox name="allowLocalLists" label="Autoriser cette église à ajouter ses propres catégories et types" defaultChecked={church?.allowLocalLists ?? true} />
+        {isSuperAdmin && <Checkbox name="isMother" label="Église mère régionale (pilote les autres églises)" defaultChecked={church?.isMother} />}
+      </div>
+    </FormDialog>
+  );
+}
+
+export function InviteDialog({ churches, defaultChurchId, canMother }: { churches: Opt[]; defaultChurchId?: string; canMother: boolean }) {
+  const [link, setLink] = React.useState<string | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const roles = [
+    { v: "treasurer", l: "Trésorier", d: "Saisit et gère les finances de l'église" },
+    { v: "pastor", l: "Pasteur / Responsable", d: "Consulte tout et valide selon le circuit" },
+    { v: "reader", l: "Lecteur", d: "Consultation seule (conseil, auditeur)" },
+  ];
+  return (
+    <>
+      <Button onClick={() => { setLink(null); setOpen(true); }}><Plus /> Inviter</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Inviter un utilisateur" description="La personne reçoit un lien pour choisir son mot de passe.">
+          {link ? (
+            <div className="space-y-4">
+              <p className="text-[14px]">Invitation créée. Si l&apos;email n&apos;arrive pas, envoyez ce lien (WhatsApp, SMS…) — il est valable 7 jours :</p>
+              <div className="break-all rounded-xl bg-surface p-3 font-mono text-[12px]">{link}</div>
+              <div className="flex gap-2">
+                <Button onClick={() => { navigator.clipboard.writeText(link); toast.success("Lien copié."); }}><Copy /> Copier le lien</Button>
+                <Button variant="secondary" onClick={() => setOpen(false)}>Fermer</Button>
+              </div>
+            </div>
+          ) : (
+            <ActionForm action={inviteUserAction} onSuccess={(r: ActionResult) => { if (r.ok && r.data?.link) setLink(String(r.data.link)); else setOpen(false); }} className="space-y-4">
+              <FieldErr name="name" label="Nom complet"><Input id="name" name="name" required /></FieldErr>
+              <FieldErr name="email" label="Email"><Input id="email" name="email" type="email" required /></FieldErr>
+              <FieldErr name="churchId" label="Église">
+                <Select id="churchId" name="churchId" defaultValue={defaultChurchId ?? ""} required>
+                  <option value="" disabled>Choisir…</option>
+                  {churches.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </Select>
+              </FieldErr>
+              <fieldset className="space-y-2">
+                <legend className="mb-1.5 text-[13px] font-medium">Rôle(s)</legend>
+                {roles.map((r) => (
+                  <label key={r.v} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50">
+                    <input type="checkbox" name="roles[]" value={r.v} className="mt-0.5 size-[18px] accent-[var(--accent)]" />
+                    <span><span className="block text-[14px] font-medium">{r.l}</span><span className="text-[13px] text-muted">{r.d}</span></span>
+                  </label>
+                ))}
+                {canMother && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50">
+                    <input type="checkbox" name="roles[]" value="mother_admin" className="mt-0.5 size-[18px] accent-[var(--accent)]" />
+                    <span><span className="block text-[14px] font-medium">Administrateur église mère</span><span className="text-[13px] text-muted">Voit et pilote toutes les églises de la région</span></span>
+                  </label>
+                )}
+              </fieldset>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
+                <SubmitButton>Envoyer l&apos;invitation</SubmitButton>
+              </div>
+            </ActionForm>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function RolesDialog({ teamId, membershipId, roles, userName, churchName }: { teamId: string; membershipId: string; roles: string[]; userName: string; churchName: string }) {
+  return (
+    <FormDialog trigger={<Pencil />} triggerProps={{ variant: "ghost", size: "icon-sm", "aria-label": "Modifier les rôles" }} title={`Rôles de ${userName}`} description={churchName} action={updateMemberRolesAction}>
+      <input type="hidden" name="teamId" value={teamId} />
+      <input type="hidden" name="membershipId" value={membershipId} />
+      {teamId === "eglise-mere" ? (
+        <Checkbox name="roles[]" value="admin" label="Administrateur église mère" defaultChecked={roles.includes("admin")} />
+      ) : (
+        <div className="space-y-2.5">
+          {[["treasurer", "Trésorier"], ["pastor", "Pasteur / Responsable"], ["reader", "Lecteur"]].map(([v, l]) => (
+            <Checkbox key={v} name="roles[]" value={v} label={l} defaultChecked={roles.includes(v!)} />
+          ))}
+        </div>
+      )}
+      <p className="text-[13px] text-muted">Décochez tout pour retirer l&apos;accès à cette église.</p>
+    </FormDialog>
+  );
+}
+
+export function DepartmentDialog({ churchId, dep }: { churchId: string; dep?: { id: string; name: string; leaderName?: string | null; leaderEmail?: string | null; annualBudgetCents?: number | null } }) {
+  return (
+    <FormDialog
+      trigger={dep ? <Pencil /> : <><Plus /> Département</>}
+      triggerProps={dep ? { variant: "ghost", size: "icon-sm", "aria-label": "Modifier" } : { variant: "primary" }}
+      title={dep ? "Modifier le département" : "Nouveau département"}
+      action={saveDepartmentAction}
+    >
+      <input type="hidden" name="churchId" value={churchId} />
+      {dep && <input type="hidden" name="id" value={dep.id} />}
+      <FieldErr name="name" label="Nom"><Input id="name" name="name" defaultValue={dep?.name} placeholder="Louange" required /></FieldErr>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="leaderName" label="Responsable" optional><Input id="leaderName" name="leaderName" defaultValue={dep?.leaderName ?? ""} /></FieldErr>
+        <FieldErr name="leaderEmail" label="Email du responsable" optional><Input id="leaderEmail" name="leaderEmail" type="email" defaultValue={dep?.leaderEmail ?? ""} /></FieldErr>
+      </div>
+      <FieldErr name="annualBudget" label="Budget annuel" optional hint="Affiche une jauge consommé / restant."><AmountInput id="annualBudget" name="annualBudget" defaultValue={centsToInput(dep?.annualBudgetCents)} /></FieldErr>
+    </FormDialog>
+  );
+}
+
+export const LIST_KINDS: Record<string, { title: string; one: string; placeholder: string }> = {
+  expense_category: { title: "Catégories de dépenses", one: "catégorie", placeholder: "Énergie" },
+  donation_type: { title: "Types de dons", one: "type de don", placeholder: "Offrande spéciale" },
+  cr_request_type: { title: "Types de demandes Cité Royale", one: "type de demande", placeholder: "Matériel" },
+  service: { title: "Cultes & événements récurrents", one: "culte", placeholder: "Culte du dimanche" },
+};
+
+export function ListItemDialog({ churchId, kind, item }: { churchId: string; kind: string; item?: { id: string; name: string; code?: string | null; isTithe?: boolean; sortOrder?: number } }) {
+  const k = LIST_KINDS[kind]!;
+  return (
+    <FormDialog
+      trigger={item ? <Pencil /> : <><Plus /> Ajouter</>}
+      triggerProps={item ? { variant: "ghost", size: "icon-sm", "aria-label": "Modifier" } : { variant: "secondary", size: "sm" }}
+      title={item ? `Modifier` : `Nouveau : ${k.one}`}
+      action={saveListItemAction}
+    >
+      <input type="hidden" name="churchId" value={churchId} />
+      <input type="hidden" name="kind" value={kind} />
+      {item && <input type="hidden" name="id" value={item.id} />}
+      <FieldErr name="name" label="Nom"><Input id="name" name="name" defaultValue={item?.name} placeholder={k.placeholder} required /></FieldErr>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="code" label="Code comptable" optional><Input id="code" name="code" defaultValue={item?.code ?? ""} placeholder="6061" /></FieldErr>
+        <FieldErr name="sortOrder" label="Ordre d'affichage"><Input id="sortOrder" name="sortOrder" type="number" defaultValue={item?.sortOrder ?? 0} /></FieldErr>
+      </div>
+      {kind === "donation_type" && <Checkbox name="isTithe" label="C'est une dîme" defaultChecked={item?.isTithe} />}
+    </FormDialog>
+  );
+}
+
+export function BankAccountDialog({ churchId, acc }: { churchId: string; acc?: { id: string; label: string; bankName?: string | null; ibanMasked?: string | null; openingBalanceCents: number; openingDate?: string | null } }) {
+  return (
+    <FormDialog
+      trigger={acc ? <Pencil /> : <><Plus /> Compte bancaire</>}
+      triggerProps={acc ? { variant: "ghost", size: "icon-sm", "aria-label": "Modifier" } : { variant: "primary" }}
+      title={acc ? "Modifier le compte" : "Nouveau compte bancaire"}
+      description="Ne saisissez jamais l'IBAN complet : seuls les 4 derniers chiffres servent à reconnaître le compte."
+      action={saveBankAccountAction}
+    >
+      <input type="hidden" name="churchId" value={churchId} />
+      {acc && <input type="hidden" name="id" value={acc.id} />}
+      <FieldErr name="label" label="Libellé"><Input id="label" name="label" defaultValue={acc?.label} placeholder="Compte courant" required /></FieldErr>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="bankName" label="Banque" optional><Input id="bankName" name="bankName" defaultValue={acc?.bankName ?? ""} placeholder="Crédit Mutuel" /></FieldErr>
+        <FieldErr name="ibanLast4" label="4 derniers chiffres" optional><Input id="ibanLast4" name="ibanLast4" inputMode="numeric" maxLength={4} defaultValue={acc?.ibanMasked?.slice(-4) ?? ""} /></FieldErr>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="openingBalance" label="Solde de départ"><AmountInput id="openingBalance" name="openingBalance" defaultValue={centsToInput(acc?.openingBalanceCents ?? 0)} /></FieldErr>
+        <FieldErr name="openingDate" label="À la date du"><Input id="openingDate" name="openingDate" type="date" defaultValue={toDateInput(acc?.openingDate ?? new Date())} required /></FieldErr>
+      </div>
+    </FormDialog>
+  );
+}
+
+export function WorkflowDialog({
+  churches, categories, wf,
+}: { churches: Opt[]; categories: Opt[]; wf?: { id: string; churchId: string; name: string; minCents: number; maxCents?: number | null; stepRoles: string[]; stepDelaysHours: number[]; categoryIds: string[]; priority: number } }) {
+  const [steps, setSteps] = React.useState<{ role: string; delay: number }[]>(
+    wf ? wf.stepRoles.map((r, i) => ({ role: r, delay: wf.stepDelaysHours[i] ?? 72 })) : [{ role: "treasurer", delay: 48 }],
+  );
+  return (
+    <FormDialog
+      trigger={wf ? <Pencil /> : <><Plus /> Nouvelle règle</>}
+      triggerProps={wf ? { variant: "ghost", size: "icon-sm", "aria-label": "Modifier" } : { variant: "primary" }}
+      title={wf ? "Modifier la règle" : "Nouvelle règle de validation"}
+      description="La règle la plus précise s'applique : église > région, puis catégorie, puis montant."
+      action={saveWorkflowAction}
+      wide
+    >
+      {wf && <input type="hidden" name="id" value={wf.id} />}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="name" label="Nom de la règle"><Input id="name" name="name" defaultValue={wf?.name} placeholder="Plus de 500 €" required /></FieldErr>
+        <FieldErr name="churchId" label="S'applique à">
+          <Select id="churchId" name="churchId" defaultValue={wf?.churchId ?? "region"}>
+            <option value="region">Toutes les églises</option>
+            {churches.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </Select>
+        </FieldErr>
+        <FieldErr name="min" label="À partir de (inclus)"><AmountInput id="min" name="min" defaultValue={centsToInput(wf?.minCents ?? 0)} /></FieldErr>
+        <FieldErr name="max" label="Jusqu'à (exclu)" optional hint="Vide = sans limite"><AmountInput id="max" name="max" defaultValue={centsToInput(wf?.maxCents)} /></FieldErr>
+      </div>
+      <Field label="Catégories concernées" optional hint="Laissez vide pour toutes les catégories.">
+        <div className="flex flex-wrap gap-2">
+          {categories.map((c) => (
+            <label key={c.value} className="cursor-pointer rounded-full border border-border px-3 py-1.5 text-[13px] has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:checked]:text-accent-strong">
+              <input type="checkbox" name="categoryIds[]" value={c.value} defaultChecked={wf?.categoryIds.includes(c.value)} className="sr-only" />
+              {c.label}
+            </label>
+          ))}
+        </div>
+      </Field>
+      <Field label="Étapes de validation (dans l'ordre)">
+        <ol className="space-y-2">
+          {steps.map((s, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <span className="num grid size-7 shrink-0 place-items-center rounded-full bg-accent-soft text-[12px] font-semibold text-accent-strong">{i + 1}</span>
+              <Select name="stepRoles[]" value={s.role} onChange={(e) => setSteps(steps.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))} className="h-10">
+                <option value="treasurer">Trésorier</option>
+                <option value="pastor">Pasteur / Responsable</option>
+                <option value="mother_admin">Église mère</option>
+              </Select>
+              <div className="flex shrink-0 items-center gap-1.5 text-[13px] text-muted">
+                <Input name="stepDelays[]" type="number" min={1} max={720} value={s.delay} onChange={(e) => setSteps(steps.map((x, j) => (j === i ? { ...x, delay: Number(e.target.value) } : x)))} className="h-10 w-20" aria-label="Délai en heures" />h
+              </div>
+              <Button type="button" variant="ghost" size="icon-sm" onClick={() => setSteps(steps.filter((_, j) => j !== i))} disabled={steps.length === 1} aria-label="Retirer l'étape"><Trash2 /></Button>
+            </li>
+          ))}
+        </ol>
+        <Button type="button" variant="secondary" size="sm" className="mt-2 self-start" onClick={() => setSteps([...steps, { role: "pastor", delay: 72 }])}><Plus /> Ajouter une étape</Button>
+      </Field>
+      <input type="hidden" name="priority" value={wf?.priority ?? 0} />
+    </FormDialog>
+  );
+}
+
+export function PublicLinkDialog({ churchId, departments }: { churchId: string; departments: Opt[] }) {
+  const [kind, setKind] = React.useState("funding");
+  return (
+    <FormDialog trigger={<><Plus /> Nouveau lien</>} title="Nouveau lien public" description="À partager par WhatsApp ou par QR code. Aucun compte n'est nécessaire pour l'utiliser." action={createPublicLinkAction}>
+      <input type="hidden" name="churchId" value={churchId} />
+      <FieldErr name="kind" label="Type de formulaire">
+        <Select id="kind" name="kind" value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="funding">Besoin d&apos;un département (demande de financement)</option>
+          <option value="reimbursement">Demande de remboursement</option>
+        </Select>
+      </FieldErr>
+      {kind === "funding" && (
+        <FieldErr name="departmentId" label="Département" hint="Laissez « Tous » pour un lien général avec liste déroulante.">
+          <Select id="departmentId" name="departmentId" defaultValue="">
+            <option value="">Tous les départements</option>
+            {departments.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+          </Select>
+        </FieldErr>
+      )}
+      <FieldErr name="label" label="Nom interne" optional><Input id="label" name="label" placeholder="Lien affiché dans le groupe des responsables" /></FieldErr>
+      <FieldErr name="expiresAt" label="Expire le" optional><Input id="expiresAt" name="expiresAt" type="date" /></FieldErr>
+    </FormDialog>
+  );
+}
