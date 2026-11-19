@@ -25,7 +25,7 @@ export default async function TreasuryPage() {
   const curve = months.map((m) => {
     const [y, mo] = m.split("-").map(Number);
     const end = new Date(Date.UTC(y!, mo!, 1));
-    return { month: m, total: computeBalances(movements, accounts, end).total };
+    return { month: m, total: computeBalances(movements, accounts.filter((a) => !a.openingDate || new Date(a.openingDate) < end), end).total };
   });
   const [approvedUnpaid, reimb, funding, cr, locks] = await Promise.all([
     listScoped<Expense>(ctx, "expenses", [Query.equal("status", ["approved", "in_approval"]), Query.equal("archived", false), Query.select(["$id", "amountCents", "status"])]),

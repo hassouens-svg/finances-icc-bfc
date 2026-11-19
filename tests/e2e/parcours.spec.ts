@@ -37,7 +37,7 @@ test("séance d'offrandes du dimanche saisie sur téléphone", async ({ page }) 
   await page.fill("#cc", "320,50");
   await page.fill("#cq", "150");
   await page.getByRole("button", { name: /^Valider$/ }).click();
-  await page.waitForURL(/\/app\/offrandes\/[\w]+$/);
+  await page.waitForURL(/\/app\/offrandes\/(?!nouvelle)[\w]+$/);
   await expect(page.getByText("Comptage conforme").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByText("Verrouillée", { exact: true })).toBeVisible();
   expect(Date.now() - start).toBeLessThan(120_000);
@@ -56,7 +56,7 @@ test("un dépôt diminue la caisse et augmente la banque", async ({ page }) => {
   const total = euros(await page.getByText("Total déposé").locator("xpath=..").locator(".num").innerText());
   expect(total).toBe(1000);
   await page.getByRole("button", { name: "Enregistrer le dépôt" }).click();
-  await page.waitForURL(/\/app\/depots\/[\w]+$/);
+  await page.waitForURL(/\/app\/depots\/(?!nouveau)[\w]+$/);
   await expect(page.getByText("Déposé").filter({ visible: true }).first()).toBeVisible();
   // relit jusqu'à ce que la nouvelle écriture soit visible (listes Appwrite)
   const read = async () => {
@@ -77,7 +77,7 @@ test("une dépense au-dessus du seuil exige l'église mère avant paiement", asy
   await page.locator("input[name=amount]").fill("850");
   await page.locator("select[name=categoryId]").selectOption({ label: "Matériel" });
   await page.getByRole("button", { name: "Soumettre à validation" }).click();
-  await page.waitForURL(/\/app\/depenses\/[\w]+$/);
+  await page.waitForURL(/\/app\/depenses\/(?!nouvelle)[\w]+$/);
   const url = page.url();
   await expect(page.getByText("étape 1/3").filter({ visible: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Marquer payée" })).toHaveCount(0);
@@ -138,15 +138,15 @@ test("remboursement public avec photo → validé → remboursé → dépense cr
   await page.getByRole("dialog").getByRole("button", { name: "Valider" }).click();
   await toast(page, /validé/);
   // la dépense liée (< 100 €) : validation trésorier puis remboursement
-  await page.getByRole("link", { name: /DEP-/ }).first().click();
+  await page.goto((await page.getByRole("link", { name: /DEP-/ }).first().getAttribute("href"))!);
   await page.getByRole("button", { name: "Approuver" }).click();
   await toast(page, /circuit terminé/);
-  await page.getByRole("link", { name: "Remboursement" }).click();
+  await page.goto((await page.getByRole("link", { name: "Remboursement", exact: true }).getAttribute("href"))!);
   await page.getByRole("button", { name: "Rembourser" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Confirmer" }).click();
   await toast(page, /effectué/);
   await expect(page.getByText("Remboursée").filter({ visible: true }).first()).toBeVisible();
-  await page.getByRole("link", { name: /DEP-/ }).first().click();
+  await page.goto((await page.getByRole("link", { name: /DEP-/ }).first().getAttribute("href"))!);
   await expect(page.getByText("Payée").filter({ visible: true }).first()).toBeVisible();
 
   await pub.goto(tracking);
