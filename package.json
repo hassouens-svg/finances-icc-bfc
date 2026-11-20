@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit",
     "test:isolation": "tsx scripts/test-isolation.ts",
     "create-superadmin": "tsx scripts/create-superadmin.ts",
-    "reset": "tsx scripts/reset.ts"
+    "reset": "tsx scripts/reset.ts",
+    "test:fixture": "tsx scripts/test-fixture.ts",
+    "test:fixture:down": "tsx scripts/test-fixture-down.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.7",

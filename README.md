@@ -149,6 +149,14 @@ npm run test:e2e         # parcours complets (Playwright, sur un serveur lancé 
 npm run test:isolation   # vérifie directement auprès d'Appwrite qu'un trésorier ne lit pas une autre église
 ```
 
+Sur une base réelle, les tests de bout en bout utilisent un **jeu de test isolé** (églises « (TEST) », comptes `@example.com`), supprimé ensuite sans toucher aux vraies données :
+
+```bash
+npm run test:fixture        # crée le jeu de test
+npm run test:e2e
+npm run test:fixture:down   # supprime uniquement le jeu de test
+```
+
 ## 11. Pages utiles
 
 - `/dev/styleguide` : le design system (désactivé en production, sauf `ENABLE_STYLEGUIDE=true`).

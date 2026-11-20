@@ -249,7 +249,7 @@ export function Shell(p: ShellProps) {
         <div className="mx-auto w-full max-w-[1240px] px-4 pb-32 pt-5 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">{p.children}</div>
       </main>
 
-      {p.canWrite && !/\/(nouvelle|nouveau|modifier|saisie)$/.test(pathname) && <Fab />}
+      {p.canWrite && /^\/app(\/(offrandes|depenses|depots))?$/.test(pathname) && <Fab />}
 
       {/* Barre du bas (téléphone) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 pb-safe backdrop-blur-md lg:hidden" aria-label="Navigation mobile">

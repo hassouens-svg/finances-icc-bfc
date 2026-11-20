@@ -282,7 +282,7 @@ export function EnvelopeEntry({
                   <AmountInput ref={amountRef} size="lg" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus={!nominative} />
                 </Field>
               </div>
-              <datalist id="env-donors">{donors.map((d) => <option key={d.id} value={d.name} />)}</datalist>
+              <datalist id="env-donors">{[...new Set([...donors.map((d) => d.name), ...lines.filter((l) => !l.anonymous && l.donorName).map((l) => l.donorName!)])].map((n) => <option key={n} value={n} />)}</datalist>
               <div>
                 <p className="mb-1.5 text-[13px] font-medium">Type de don</p>
                 <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="radiogroup" aria-label="Type de don">

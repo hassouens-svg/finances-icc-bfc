@@ -106,6 +106,13 @@ export function EnvelopeGrid({
   onRetry: (line: GridLine) => void;
 }) {
   const rows = React.useMemo(() => [...lines].reverse(), [lines]); // ordre de saisie, de haut en bas
+  // Suggestions : donateurs connus + noms déjà tapés dans cette séance (même avant leur enregistrement)
+  const known = React.useMemo(() => {
+    const seen = new Set(donors.map((d) => norm(d.name)));
+    const extra: Opt[] = [];
+    for (const l of lines) if (!l.anonymous && l.donorName && !seen.has(norm(l.donorName))) { seen.add(norm(l.donorName)); extra.push({ id: `session:${l.donorName}`, name: l.donorName }); }
+    return [...donors, ...extra];
+  }, [donors, lines]);
   const last = rows[rows.length - 1];
   const blank = React.useCallback((): Draft => ({ donor: "", typeId: last?.donationTypeId ?? donationTypes.find((t) => /d[iî]me/i.test(t.name))?.id ?? donationTypes[0]?.id ?? "", method: last?.method ?? "cash", amount: "", cheque: "" }), [last, donationTypes]);
   const [drafts, setDrafts] = React.useState<Record<string, Draft>>({});
@@ -159,7 +166,7 @@ export function EnvelopeGrid({
     <>
       <td className={cn("num w-12 border-r border-border px-2 text-center text-[12px] text-muted", !line && "text-accent")}>{line ? i! + 1 : "+"}</td>
       <td className={cn(cellCls, "min-w-[220px]")}>
-        <DonorCell value={d.donor} onChange={(v) => set({ donor: v })} donors={donors} onCommit={() => (line ? nav(i!, "donor", "down") : focus("new", "amount"))} cellRef={(el) => { cells.current[`${key}:donor`] = el; }} onNav={(dir) => i !== null ? nav(i, "donor", dir) : dir === "up" && rows.length && focus(rows[rows.length - 1]!.key, "donor")} />
+        <DonorCell value={d.donor} onChange={(v) => set({ donor: v })} donors={known} onCommit={() => (line ? nav(i!, "donor", "down") : focus("new", "amount"))} cellRef={(el) => { cells.current[`${key}:donor`] = el; }} onNav={(dir) => i !== null ? nav(i, "donor", dir) : dir === "up" && rows.length && focus(rows[rows.length - 1]!.key, "donor")} />
       </td>
       <td className={cn(cellCls, "w-48")}>
         <select ref={(el) => { cells.current[`${key}:type`] = el; }} value={d.typeId} onChange={(e) => set({ typeId: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onEnter(); } }} className={selectCls} aria-label="Type de don">
