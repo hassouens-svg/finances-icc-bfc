@@ -16,7 +16,7 @@ import type { ActionResult } from "@/lib/action-types";
 
 type Opt = { value: string; label: string };
 
-function FieldErr({ name, children, ...p }: { name: string; label: string; hint?: string; children: React.ReactNode; optional?: boolean }) {
+function FieldErr({ name, children, ...p }: { name: string; label: string; hint?: React.ReactNode; children: React.ReactNode; optional?: boolean }) {
   const e = useFieldError(name);
   return <Field {...p} error={e} htmlFor={name}>{children}</Field>;
 }
@@ -81,6 +81,31 @@ function ChurchNameCityPrefix({ church, cities }: { church?: { name: string; cit
   );
 }
 
+/** Accès de l'église, créés en même temps qu'elle (obligatoires). */
+function ChurchAccessFields() {
+  const [pwd, setPwd] = React.useState("");
+  const gen = () => {
+    const a = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    const r = crypto.getRandomValues(new Uint32Array(12));
+    setPwd(Array.from(r, (x) => a[x % a.length]).join(""));
+  };
+  return (
+    <div className="space-y-3 rounded-xl border border-accent/25 bg-accent-soft/40 p-3.5">
+      <div>
+        <p className="text-[14px] font-medium">Accès de l&apos;église</p>
+        <p className="text-[12px] text-muted">Le compte du responsable de l&apos;église : il voit et gère tout pour son église et crée lui-même les accès de son équipe. Pour l&apos;église mère : il pilote toutes les églises (sauf le journal d&apos;audit, réservé au super admin).</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FieldErr name="accessName" label="Nom du responsable"><Input id="accessName" name="accessName" placeholder="Prénom Nom" required /></FieldErr>
+        <FieldErr name="accessEmail" label="Email de connexion"><Input id="accessEmail" name="accessEmail" type="email" placeholder="eglise.besancon@…" required /></FieldErr>
+      </div>
+      <FieldErr name="accessPassword" label="Mot de passe" hint={<>10 caractères minimum, à transmettre au responsable. <button type="button" onClick={gen} className="font-medium text-accent underline-offset-2 hover:underline">Générer un mot de passe</button></>}>
+        <Input id="accessPassword" name="accessPassword" type="text" autoComplete="off" value={pwd} onChange={(e) => setPwd(e.target.value)} minLength={10} required />
+      </FieldErr>
+    </div>
+  );
+}
+
 export function ChurchDialog({
   church, cities, isSuperAdmin,
 }: { church?: { id: string; name: string; cityId?: string | null; address?: string | null; pastorName?: string | null; refPrefix: string; isMother: boolean; allowLocalLists: boolean; logoUrl?: string | null }; cities: Opt[]; isSuperAdmin: boolean }) {
@@ -89,27 +114,15 @@ export function ChurchDialog({
       trigger={church ? <><Pencil /> Modifier</> : <><Plus /> Nouvelle église</>}
       triggerProps={{ variant: church ? "secondary" : "primary" }}
       title={church ? "Modifier l'église" : "Nouvelle église"}
-      description={church ? undefined : "Une équipe (team) Appwrite est créée automatiquement pour cloisonner ses données."}
+      description={church ? undefined : "L'église et ses accès sont créés en une fois : le responsable pourra se connecter tout de suite."}
       action={saveChurchAction}
     >
       {church && <input type="hidden" name="id" value={church.id} />}
       <ChurchNameCityPrefix church={church} cities={cities} />
+      {!church && <ChurchAccessFields />}
       <FieldErr name="address" label="Adresse" optional><Input id="address" name="address" defaultValue={church?.address ?? ""} /></FieldErr>
       <FieldErr name="pastorName" label="Pasteur / responsable" optional><Input id="pastorName" name="pastorName" defaultValue={church?.pastorName ?? ""} /></FieldErr>
       <LogoPicker current={church?.logoUrl} />
-      {!church && (
-        <div className="space-y-3 rounded-xl border border-accent/25 bg-accent-soft/40 p-3.5">
-          <div>
-            <p className="text-[14px] font-medium">Accès de l&apos;église</p>
-            <p className="text-[12px] text-muted">Le compte du responsable de cette église : il voit et gère tout pour son église et crée lui-même son équipe. Pour l&apos;église mère, il pilote aussi toute la région.</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FieldErr name="accessName" label="Nom du responsable" optional><Input id="accessName" name="accessName" placeholder="Prénom Nom" /></FieldErr>
-            <FieldErr name="accessEmail" label="Email de connexion" optional><Input id="accessEmail" name="accessEmail" type="email" placeholder="eglise.dijon@…" /></FieldErr>
-            <FieldErr name="accessPassword" label="Mot de passe" optional hint="10 caractères min. Vide = lien d'invitation (sur la fiche de l'église)."><Input id="accessPassword" name="accessPassword" type="text" autoComplete="off" /></FieldErr>
-          </div>
-        </div>
-      )}
       <div className="space-y-2.5 rounded-xl bg-surface p-3.5">
         <Checkbox name="allowLocalLists" label="Autoriser cette église à ajouter ses propres catégories et types" defaultChecked={church?.allowLocalLists ?? true} />
         {isSuperAdmin && <Checkbox name="isMother" label="Église mère régionale (pilote les autres églises)" defaultChecked={church?.isMother} />}

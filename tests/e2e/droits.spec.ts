@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { login, toast, PASSWORD } from "./helpers";
+import { login, toast, PASSWORD, testPrefix } from "./helpers";
 
 const stamp = Date.now().toString(36);
 const respEmail = `resp.${stamp}@example.com`;
@@ -14,6 +14,7 @@ test.describe.serial("droits par module", () => {
     const dlg = page.getByRole("dialog");
     await dlg.getByLabel("Nom de l'église").fill(`ICC Test Droits ${stamp}`);
     await dlg.getByLabel("Ville").fill(`Testville ${stamp}`);
+    await dlg.getByLabel("Préfixe des références").fill(testPrefix());
     await dlg.getByLabel("Nom du responsable").fill("Responsable Test");
     await dlg.getByLabel("Email de connexion").fill(respEmail);
     await dlg.getByLabel("Mot de passe").fill(PASSWORD);

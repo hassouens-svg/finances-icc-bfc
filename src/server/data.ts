@@ -9,7 +9,7 @@ import { monthKey } from "@/lib/period";
 import type { Church, Row } from "@/lib/types";
 
 // ---------------- Permissions de ligne ----------------
-import { churchPermissions, regionPermissions } from "@/lib/perms";
+import { churchPermissions, regionPermissions, auditPermissions } from "@/lib/perms";
 export { churchPermissions, regionPermissions };
 export function userOnlyPermissions(userId: string) {
   return [Permission.read(Role.user(userId)), Permission.update(Role.user(userId))];
@@ -23,6 +23,7 @@ export async function churchById(id: string) {
 }
 
 export async function permsFor(churchId: string, module: ModuleKey | "base" | "audit" = "base") {
+  if (module === "audit") return auditPermissions();
   if (churchId === REGION) return regionPermissions();
   return churchPermissions(await churchById(churchId), module);
 }
@@ -56,10 +57,9 @@ export async function getScoped<T extends Row & { churchId: string }>(ctx: AppCo
   return row;
 }
 
-function canAudit(ctx: AppContext, churchId: string) {
-  if (ctx.isRegional) return true;
-  const a = ctx.access[churchId];
-  return !!a && (a.admin || a.preset === "treasurer" || a.preset === "pastor");
+/** Le journal d'audit n'est visible que du super administrateur (pas même de l'église mère). */
+function canAudit(ctx: AppContext, _churchId: string) {
+  return ctx.isSuperAdmin;
 }
 
 // ---------------- Écritures (après contrôle des droits) ----------------

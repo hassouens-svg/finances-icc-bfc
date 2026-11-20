@@ -81,6 +81,14 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
       return { ok: true, message: "Église modifiée." };
     }
 
+    // Accès de l'église : obligatoires à la création, vérifiés AVANT de créer quoi que ce soit
+    const raw = formToObject(fd);
+    const acc = z.object({
+      accessName: zText("Le nom du responsable", 160),
+      accessEmail: zEmail().transform((v) => v.toLowerCase()),
+      accessPassword: z.string({ error: "Choisissez un mot de passe." }).min(10, "Le mot de passe doit faire 10 caractères minimum."),
+    }).parse(raw);
+    if (ctx.allChurches.some((c) => c.refPrefix === d.refPrefix)) throw new UserError(`Le préfixe ${d.refPrefix} est déjà utilisé par une autre église : choisissez-en un autre.`);
     let slug = slugify(d.name) || "eglise";
     if (ctx.allChurches.some((c) => c.slug === slug)) slug = `${slug}-${randomToken(3).toLowerCase()}`;
     const teamId = `church-${slug}`.slice(0, 36);
@@ -100,18 +108,13 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
     await audit(ctx, id, "create", "church", id, `Église créée : ${d.name}`, null, d);
     revalidateApp();
     // Accès de l'église créé en même temps (responsable de l'église ; pour l'église mère : aussi admin de la région)
-    const raw = formToObject(fd);
-    const accessEmail = String(raw.accessEmail ?? "").trim().toLowerCase();
-    if (accessEmail) {
-      const acc = z.object({ accessEmail: zEmail(), accessName: zText("Le nom du responsable", 160), accessPassword: z.union([z.literal(""), z.string().min(10, "Le mot de passe doit faire 10 caractères minimum.")]).optional() }).parse(raw);
-      const church = { $id: id, name: d.name, teamId } as Church;
-      const r = await grantAccount({ email: acc.accessEmail.toLowerCase(), name: acc.accessName, password: acc.accessPassword || null, church, churchRoles: ["admin"], motherAdmin: d.isMother });
-      await audit(ctx, id, "invite", "user", r.userId, `Accès de l'église créé : ${acc.accessEmail}${d.isMother ? " (responsable + admin église mère)" : " (responsable)"}`);
-    }
+    const church = { $id: id, name: d.name, teamId } as Church;
+    const r = await grantAccount({ email: acc.accessEmail, name: acc.accessName, password: acc.accessPassword, church, churchRoles: ["admin"], motherAdmin: d.isMother });
+    await audit(ctx, id, "invite", "user", r.userId, `Accès de l'église créé : ${acc.accessEmail}${d.isMother ? " (responsable + admin église mère)" : " (responsable)"}`);
     revalidateApp();
     return {
       ok: true,
-      message: accessEmail ? `Église « ${d.name} » et son accès créés.` : `Église « ${d.name} » créée.`,
+      message: `Église « ${d.name} » et son accès (${acc.accessEmail}) créés.`,
       redirect: `/app/admin/eglises/${id}`,
     };
   });
@@ -138,6 +141,27 @@ export async function toggleChurchActiveAction(fd: FormData): Promise<ActionResu
     await audit(ctx, id, c.active ? "archive" : "restore", "church", id, `${c.active ? "Archivage" : "Réactivation"} : ${c.name}`);
     revalidateApp();
     return { ok: true, message: c.active ? "Église archivée." : "Église réactivée." };
+  });
+}
+
+/**
+ * Suppression définitive d'une église (données, fichiers, équipe, comptes rattachés à elle seule).
+ * Super admin : toute église. Église mère : ses églises rattachées, jamais l'église mère elle-même.
+ */
+export async function deleteChurchAction(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireContext();
+    assertRegional(ctx);
+    const id = String(fd.get("id"));
+    const c = await adminGet<Church>("churches", id);
+    if (!c) throw new UserError("Église introuvable.");
+    if (c.isMother && !ctx.isSuperAdmin) throw new ForbiddenError("L'église mère ne peut pas se supprimer elle-même : seul le super administrateur le peut.");
+    if (String(fd.get("confirm") ?? "").trim().toLowerCase() !== c.name.trim().toLowerCase()) throw new UserError("Recopiez exactement le nom de l'église pour confirmer.");
+    const { purgeChurch } = await import("../purge");
+    const r = await purgeChurch(c, ctx.user.id);
+    await audit(ctx, REGION, "delete", "church", id, `Église supprimée définitivement : ${c.name} (${r.rows} élément(s), ${r.files} fichier(s), ${r.users} compte(s))`);
+    revalidateApp();
+    return { ok: true, message: `Église « ${c.name} » supprimée définitivement.`, redirect: "/app/admin/eglises" };
   });
 }
 
@@ -184,6 +208,7 @@ export async function updateMemberRolesAction(_: ActionResult | null, fd: FormDa
     const { teams } = adminClient();
     if (d.teamId === MOTHER_TEAM_ID) {
       assertRegional(ctx);
+      if (d.userId === ctx.user.id && !ctx.isSuperAdmin) throw new UserError("Vous ne pouvez pas retirer votre propre accès église mère.");
       await setMembership(MOTHER_TEAM_ID, d.userId, raw.motherAdmin === "on" ? ["admin"] : []);
       await audit(ctx, REGION, "update", "membership", d.userId, raw.motherAdmin === "on" ? "Accès église mère accordé" : "Accès église mère retiré");
       revalidateApp();
@@ -216,6 +241,27 @@ export async function toggleUserAction(fd: FormData): Promise<ActionResult> {
     await audit(ctx, REGION, u.status ? "disable" : "enable", "user", userId, `${u.status ? "Désactivation" : "Réactivation"} de ${u.email}`);
     revalidateApp();
     return { ok: true, message: u.status ? "Utilisateur désactivé." : "Utilisateur réactivé." };
+  });
+}
+
+/**
+ * Suppression définitive d'un compte. Super admin : tout compte sauf le sien.
+ * Église mère : tout compte sauf le sien et ceux des super admins.
+ */
+export async function deleteUserAction(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireContext();
+    assertRegional(ctx);
+    const userId = String(fd.get("userId"));
+    if (userId === ctx.user.id) throw new UserError("Vous ne pouvez pas supprimer votre propre compte.");
+    const { users } = adminClient();
+    const u = await users.get({ userId });
+    if (u.labels?.includes("superadmin") && !ctx.isSuperAdmin) throw new ForbiddenError("Seul le super administrateur peut supprimer ce compte.");
+    if (String(fd.get("confirm") ?? "").trim().toLowerCase() !== u.email.toLowerCase()) throw new UserError("Recopiez exactement l'email du compte pour confirmer.");
+    await users.delete({ userId });
+    await audit(ctx, REGION, "delete", "user", userId, `Compte supprimé définitivement : ${u.email}`);
+    revalidateApp();
+    return { ok: true, message: `Compte ${u.email} supprimé.` };
   });
 }
 

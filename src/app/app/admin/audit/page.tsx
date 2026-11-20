@@ -1,5 +1,6 @@
 import { Query } from "node-appwrite";
 import { requireContext } from "@/server/context";
+import { NoAccess } from "@/components/no-access";
 import { listScoped, adminList } from "@/server/data";
 import { REGION } from "@/lib/schema";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,11 +18,12 @@ const ACTIONS: Record<string, string> = {
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<{ church?: string }> }) {
   const ctx = await requireContext();
+  if (!ctx.isSuperAdmin) return <NoAccess />;
   const sp = await searchParams;
   const ids = sp.church && ctx.scopeIds.includes(sp.church) ? [sp.church] : ctx.scopeIds;
   const [logs, regionLogs] = await Promise.all([
     listScoped<AuditLog>(ctx, "audit_logs", [Query.orderDesc("$createdAt"), Query.limit(1000)], ids),
-    ctx.isRegional ? adminList<AuditLog>("audit_logs", [Query.equal("churchId", REGION), Query.orderDesc("$createdAt"), Query.limit(300)]) : Promise.resolve([]),
+    adminList<AuditLog>("audit_logs", [Query.equal("churchId", REGION), Query.orderDesc("$createdAt"), Query.limit(300)]),
   ]);
   const all = [...logs, ...regionLogs].sort((a, b) => b.$createdAt.localeCompare(a.$createdAt));
   const columns: Col[] = [

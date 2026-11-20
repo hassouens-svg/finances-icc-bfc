@@ -17,9 +17,9 @@ export default async function AdminHome() {
     { href: "/app/admin/workflows", icon: GitBranch, title: "Circuits de validation", desc: "Seuils, étapes et délais des dépenses", regional: true },
     { href: "/app/admin/liens", icon: Link2, title: "Liens publics & QR codes", desc: "Besoins et remboursements sans compte" },
     { href: "/app/admin/parametres", icon: Bell, title: "Alertes & paramètres", desc: "Seuils de caisse, délais, reçus fiscaux", regional: true },
-    { href: "/app/admin/audit", icon: ScrollText, title: "Journal d'audit", desc: "Qui a fait quoi, quand" },
+    { href: "/app/admin/audit", icon: ScrollText, title: "Journal d'audit", desc: "Qui a fait quoi, quand (super admin)", superOnly: true },
     { href: "/app/rapports", icon: Download, title: "Export & sauvegarde", desc: "Export complet Excel d'une église" },
-  ].filter((t) => (t as { regional?: boolean }).regional ? ctx.isRegional : (t as { team?: boolean }).team ? ctx.isRegional || ctx.churches.some((c) => canManageTeam(ctx, c.$id)) : ctx.isRegional || ctx.churches.some((c) => canManage(ctx, c.$id, "parametres")));
+  ].filter((t) => !(t as { superOnly?: boolean }).superOnly || ctx.isSuperAdmin).filter((t) => (t as { regional?: boolean }).regional ? ctx.isRegional : (t as { team?: boolean }).team ? ctx.isRegional || ctx.churches.some((c) => canManageTeam(ctx, c.$id)) : ctx.isRegional || ctx.churches.some((c) => canManage(ctx, c.$id, "parametres")));
   return (
     <>
       <PageHeader title="Administration" description="Tout est configurable : rien n'est figé dans l'application." />

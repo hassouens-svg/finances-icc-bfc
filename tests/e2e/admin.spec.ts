@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { login, toast, PASSWORD } from "./helpers";
+import { login, toast, PASSWORD, testPrefix, fillChurchAccess } from "./helpers";
 
 const logo = path.join(__dirname, "../../public/brand/icc-dijon.jpg");
 const stamp = Date.now().toString(36);
@@ -23,7 +23,8 @@ test("super admin : crée une église avec logo ; église mère : crée un compt
   await dlg.getByLabel("Ville").fill(`Testville ${stamp}`);
   await expect(dlg.getByText("Nouvelle ville : elle sera créée automatiquement.")).toBeVisible();
   await expect(dlg.getByLabel("Préfixe des références")).toHaveValue("TES");
-  await dlg.getByLabel("Préfixe des références").fill("TST");
+  await dlg.getByLabel("Préfixe des références").fill(testPrefix());
+  await fillChurchAccess(dlg, `resp.admin.${stamp}@example.com`);
   await dlg.locator("input[name=logo]").setInputFiles(logo);
   await dlg.getByRole("button", { name: "Enregistrer" }).click();
   await page.waitForURL(/\/app\/admin\/eglises\/\w+$/);

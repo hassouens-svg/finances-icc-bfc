@@ -7,9 +7,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChurchDialog } from "@/components/admin/forms";
+import { DeleteDialog } from "@/components/admin/delete-dialog";
 import { TeamCard } from "@/components/admin/team-card";
 import { ActionButton } from "@/components/action-form";
-import { toggleChurchActiveAction } from "@/server/actions/admin";
+import { toggleChurchActiveAction, deleteChurchAction } from "@/server/actions/admin";
 import { ROLE_LABELS } from "@/lib/status";
 import { initials } from "@/lib/format";
 import { logoUrl } from "@/lib/logo";
@@ -45,6 +46,10 @@ export default async function ChurchDetail({ params }: { params: Promise<{ id: s
                 {c.active ? "Archiver" : "Réactiver"}
               </ActionButton>
             )}
+            {(!c.isMother || ctx.isSuperAdmin) && (
+              <DeleteDialog action={deleteChurchAction} fields={{ id: c.$id }} confirmText={c.name} size="md" title={`Supprimer ${c.name}`}
+                warning="Toutes les données de l'église (offrandes, dépenses, dépôts, demandes, fichiers…) et les comptes qui n'avaient accès qu'à elle seront effacés du système." />
+            )}
           </>
         }
       />
@@ -59,7 +64,7 @@ export default async function ChurchDetail({ params }: { params: Promise<{ id: s
               ["Comptes bancaires", `/app/admin/comptes?church=${c.$id}`],
               ["Listes locales", `/app/admin/listes?church=${c.$id}`],
               ["Liens publics", `/app/admin/liens?church=${c.$id}`],
-              ["Journal d'audit", `/app/admin/audit?church=${c.$id}`],
+              ...(ctx.isSuperAdmin ? [["Journal d'audit", `/app/admin/audit?church=${c.$id}`]] : []),
             ].map(([l, h]) => (
               <Link key={h} href={h!} className="rounded-xl border border-border px-3.5 py-2.5 text-[14px] font-medium hover:border-accent/40 hover:bg-surface">{l} →</Link>
             ))}

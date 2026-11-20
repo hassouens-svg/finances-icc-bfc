@@ -5,10 +5,11 @@ import { MOTHER_TEAM_ID } from "@/lib/schema";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DeleteDialog } from "@/components/admin/delete-dialog";
 import { CreateAccountDialog, EditAccessDialog } from "@/components/admin/access";
 import { accessSummary } from "@/lib/access";
 import { ActionButton } from "@/components/action-form";
-import { toggleUserAction, toggleSuperAdminAction } from "@/server/actions/admin";
+import { toggleUserAction, deleteUserAction, toggleSuperAdminAction } from "@/server/actions/admin";
 import { ResendInviteButton } from "./resend";
 import { ROLE_LABELS } from "@/lib/status";
 import { initials, formatDate } from "@/lib/format";
@@ -71,6 +72,10 @@ export default async function UsersPage() {
                   <ActionButton size="sm" variant={u.status ? "danger-soft" : "soft"} action={toggleUserAction} payload={{ userId: u.$id }} confirm={u.status ? `Désactiver ${u.email} ? Ses sessions seront fermées.` : undefined}>
                     {u.status ? "Désactiver" : "Réactiver"}
                   </ActionButton>
+                )}
+                {u.$id !== ctx.user.id && (ctx.isSuperAdmin || !u.labels?.includes("superadmin")) && (
+                  <DeleteDialog action={deleteUserAction} fields={{ userId: u.$id }} confirmText={u.email} title={`Supprimer le compte de ${u.name || u.email}`}
+                    warning="Le compte est effacé du système : la personne ne pourra plus se connecter. Ce qu'elle a saisi reste dans les données des églises." />
                 )}
               </div>
             </div>

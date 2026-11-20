@@ -4,7 +4,7 @@
  */
 import { test, expect } from "@playwright/test";
 import path from "node:path";
-import { toast } from "./helpers";
+import { toast, fillChurchAccess } from "./helpers";
 
 const email = process.env.FRESH_EMAIL;
 const password = process.env.FRESH_PASSWORD;
@@ -30,6 +30,7 @@ test("mise en place complète depuis une base vide", async ({ page, context }) =
   await expect(dlg.getByLabel("Préfixe des références")).toHaveValue("DIJ");
   await dlg.locator("input[name=logo]").setInputFiles(logo);
   await dlg.locator("input[name=isMother]").check();
+  await fillChurchAccess(dlg, "fresh.responsable@example.com", "Responsable Dijon");
   await dlg.getByRole("button", { name: "Enregistrer" }).click();
   await page.waitForURL(/\/app\/admin\/eglises\/\w+$/);
 

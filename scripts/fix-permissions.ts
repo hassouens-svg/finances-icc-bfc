@@ -4,8 +4,8 @@
  */
 import "dotenv/config";
 import { Client, TablesDB, Storage, Query } from "node-appwrite";
-import { DATABASE_ID, TABLES, FILES_BUCKET } from "../src/lib/schema";
-import { churchPermissions } from "../src/lib/perms";
+import { DATABASE_ID, TABLES, FILES_BUCKET, REGION } from "../src/lib/schema";
+import { churchPermissions, auditPermissions } from "../src/lib/perms";
 import { TABLE_MODULE, ENTITY_MODULE } from "../src/lib/access";
 
 const client = new Client().setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!).setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!).setKey(process.env.APPWRITE_API_KEY!);
@@ -42,6 +42,12 @@ const same = (a: string[], b: string[]) => a.length === b.length && [...a].sort(
         if (t.id === "attachments" && r.fileId) await storage.updateFile({ bucketId: FILES_BUCKET, fileId: String(r.fileId), permissions: perms }).catch(() => {});
       }
     }
+  }
+  // Journal régional : super admin seul
+  for (const r of await all("audit_logs", [Query.equal("churchId", REGION)])) {
+    if (same(r.$permissions ?? [], auditPermissions())) continue;
+    await db.updateRow({ databaseId: DATABASE_ID, tableId: "audit_logs", rowId: r.$id, data: {}, permissions: auditPermissions() });
+    updated++;
   }
   console.log(`✅ Permissions à jour (${updated} ligne(s) modifiée(s), ${churches.length} église(s)).`);
 })().catch((e) => { console.error("❌", e?.message ?? e); process.exit(1); });

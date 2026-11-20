@@ -3,7 +3,7 @@ import { Query } from "node-appwrite";
 import { FileUp, HandCoins, Receipt } from "lucide-react";
 import { requireContext, canManage } from "@/server/context";
 import { getLookups } from "@/server/lookups";
-import { listScoped } from "@/server/data";
+import { adminList } from "@/server/data";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -25,9 +25,10 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
   const ids = churches.map((c) => c.$id);
   const [lk, history] = await Promise.all([
     getLookups(ids.join(",")),
-    listScoped<AuditLog>(ctx, "audit_logs", [Query.equal("action", "import"), Query.orderDesc("$createdAt"), Query.limit(30)], ids),
+    // Historique des imports lu côté serveur (le journal d'audit lui-même est réservé au super admin)
+    adminList<AuditLog>("audit_logs", [Query.equal("churchId", ids), Query.equal("action", "import"), Query.orderDesc("$createdAt"), Query.limit(30)]),
   ]);
-  const undone = new Set((await listScoped<AuditLog>(ctx, "audit_logs", [Query.equal("entityType", "import"), Query.limit(200)], ids)).map((a) => a.entityId));
+  const undone = new Set((await adminList<AuditLog>("audit_logs", [Query.equal("churchId", ids), Query.equal("entityType", "import"), Query.limit(200)])).map((a) => a.entityId));
   const batches = [...new Map(history.filter((h) => !undone.has(h.entityId)).map((h) => [h.entityId, h])).values()];
   const forChurch = (list: { $id: string; name: string; churchId: string }[]) => list.filter((x) => x.churchId === "region" || ids.includes(x.churchId)).map((x) => ({ id: x.$id, name: x.name }));
   return (
