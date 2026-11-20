@@ -22,6 +22,8 @@ import { formatEuro } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { MODULES } from "@/lib/guide";
 import { churchSetup } from "@/server/setup";
+import { chargesOverview } from "@/server/charges";
+import { CoverageCard } from "@/components/charges/coverage-card";
 import { SetupChecklist } from "@/components/admin/church-steps";
 import { BookOpen } from "lucide-react";
 import type { CrRequest, Expense, FundingRequest, OfferingLine, Reimbursement } from "@/lib/types";
@@ -60,6 +62,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const alerts = await computeAlerts(ctx, movements, accounts);
   const delta = (a: number, b: number) => (b ? `${a >= b ? "+" : ""}${Math.round(((a - b) / Math.abs(b)) * 100)} % vs ${prev.label.toLowerCase()}` : prev.label);
   const isAll = ctx.view === "all";
+  const charges = !isAll && ctx.activeChurch ? await chargesOverview(ctx, ctx.activeChurch.$id) : null;
   const title = isAll ? "Vue régionale" : ctx.activeChurch?.name ?? "Tableau de bord";
   const todo = [
     ...toApprove.slice(0, 5).map((e) => ({ href: `/app/depenses/${e.$id}`, icon: CheckCheck, text: `Valider « ${e.title} »`, meta: formatEuro(e.amountCents) })),
@@ -78,7 +81,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       {checklist}
       <nav aria-label="Modules" className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex w-max gap-2 xl:grid xl:w-full xl:grid-cols-8">
-          {MODULES.map((m) => (
+          {MODULES.filter((m) => m.num).map((m) => (
             <Link key={m.id} href={m.href} className="flex items-center gap-2 rounded-xl border border-border bg-bg px-3 py-2 text-[13px] font-medium shadow-card transition-colors hover:border-accent/40">
               <span className="num grid size-6 shrink-0 place-items-center rounded-lg bg-accent-soft text-[12px] font-semibold text-accent-strong">{m.num}</span>
               <span className="whitespace-nowrap xl:truncate">{m.short}</span>
@@ -125,6 +128,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </Card>
       )}
 
+      {charges && charges.charges.length > 0 && (
+        <div className="mt-5"><CoverageCard coverage={charges.coverageMonth} income={charges.thisMonth} avg3={charges.avg3} runway={charges.runway} available={charges.available} compact href="/app/charges" /></div>
+      )}
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
         <Card>
           <CardHeader title="Entrées et sorties sur 12 mois" description="Les dépôts (caisse → banque) ne sont pas comptés." />

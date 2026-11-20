@@ -92,6 +92,22 @@ export async function nextReference(prefix: string, kind: string, date = new Dat
   return `${kind}-${prefix}-${year}-${String(row.value).padStart(4, "0")}`.toUpperCase();
 }
 
+/** Réserve d'un coup n numéros de référence (imports en masse) et renvoie un générateur. */
+export async function reserveReferences(churchId: string, kind: string, year: number, n: number) {
+  const church = await churchById(churchId);
+  const { db } = adminClient();
+  const key = `${church.refPrefix}-${kind}-${year}`.toUpperCase();
+  const rowId = key.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 36);
+  try {
+    await db.createRow({ databaseId: DATABASE_ID, tableId: "counters", rowId, data: { key, value: 0 }, permissions: [] });
+  } catch (e) {
+    if (!(e instanceof AppwriteException) || e.code !== 409) throw e;
+  }
+  const row = (await db.incrementRowColumn({ databaseId: DATABASE_ID, tableId: "counters", rowId, column: "value", value: n })) as unknown as { value: number };
+  let next = row.value - n + 1;
+  return () => `${kind}-${church.refPrefix}-${year}-${String(next++).padStart(4, "0")}`.toUpperCase();
+}
+
 export async function churchReference(churchId: string, kind: string, date?: Date) {
   const church = await churchById(churchId);
   return nextReference(church.refPrefix, kind, date);

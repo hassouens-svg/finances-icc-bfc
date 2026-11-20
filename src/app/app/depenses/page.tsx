@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { DataTable, type Col } from "@/components/data/data-table";
 import { PeriodFilter } from "@/components/period-filter";
 import { ExportButtons } from "@/components/export-buttons";
+import { FileUp } from "lucide-react";
 import { STATUS } from "@/lib/status";
 import type { Expense } from "@/lib/types";
 
@@ -39,7 +40,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader module={5} help="depenses" title="Dépenses" description="Chaque dépense suit son circuit de validation avant d'être payée."
-        actions={<><PeriodFilter value={period.key} from={sp.from} to={sp.to} />{canWrite && <Button asChild><Link href="/app/depenses/nouvelle"><Plus /> Nouvelle dépense</Link></Button>}</>} />
+        actions={<><PeriodFilter value={period.key} from={sp.from} to={sp.to} />{canWrite && <Button asChild variant="secondary"><Link href="/app/import?type=depenses"><FileUp /> Importer Excel</Link></Button>}{canWrite && <Button asChild><Link href="/app/depenses/nouvelle"><Plus /> Nouvelle dépense</Link></Button>}</>} />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Argent sorti (payé)" value={s(["paid"])} tone="accent" icon={<Banknote />} hint={period.label} />
         <KpiCard label="Approuvé, à payer" value={s(["approved"])} icon={<CheckCircle2 />} />

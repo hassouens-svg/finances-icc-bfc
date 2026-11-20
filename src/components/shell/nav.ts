@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, CheckCheck, HandCoins, Users, Receipt, RotateCcw, Lightbulb, FolderKanban, Landmark, Wallet,
-  Crown, FileBarChart, PieChart, Scale, Settings, BookCheck, Plus, BookOpen, type LucideIcon,
+  Crown, FileBarChart, CalendarClock, FileUp, PieChart, Scale, Settings, BookCheck, Plus, BookOpen, type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; badgeKey?: "approvals" | "reimbursements" | "funding"; exact?: boolean };
@@ -40,6 +40,7 @@ export const NAV: NavGroup[] = [
     num: 5, label: "Dépenses & projets",
     items: [
       { href: "/app/depenses", label: "Dépenses", icon: Receipt },
+      { href: "/app/charges", label: "Charges fixes (loyer…)", icon: CalendarClock },
       { href: "/app/projets", label: "Projets & événements", icon: FolderKanban },
     ],
   },
@@ -61,6 +62,7 @@ export const NAV: NavGroup[] = [
     label: "Aide & paramètres",
     items: [
       { href: "/app/guide", label: "Guide d'utilisation", icon: BookOpen },
+      { href: "/app/import", label: "Importer (Excel)", icon: FileUp },
       { href: "/app/admin", label: "Administration", icon: Settings },
     ],
   },

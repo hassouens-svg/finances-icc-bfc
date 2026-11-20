@@ -277,7 +277,7 @@ export async function archiveRowAction(fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const ctx = await requireContext();
     const table = String(fd.get("table"));
-    if (!["departments", "list_items", "bank_accounts", "approval_workflows", "projects"].includes(table)) throw new ForbiddenError();
+    if (!["departments", "list_items", "bank_accounts", "approval_workflows", "projects", "recurring_charges"].includes(table)) throw new ForbiddenError();
     const id = String(fd.get("id"));
     const row = await adminGet<{ $id: string; $createdAt: string; $updatedAt: string; churchId: string; archived: boolean; name?: string; label?: string }>(table, id);
     if (!row) throw new UserError("Élément introuvable.");

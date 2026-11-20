@@ -60,7 +60,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
                     <p className="font-medium">{l.donationTypeName}</p>
                     <p className="text-[12px] text-muted">{METHOD_LABELS[l.method]}{l.anonymous ? " · anonyme" : l.donorId ? <> · <Link className="text-accent" href={`/app/donateurs/${l.donorId}`}>{l.donorName}</Link></> : ` · ${l.donorName}`}{l.chequeRef ? ` · chèque n° ${l.chequeRef}` : ""}</p>
                   </div>
-                  {l.depositId && <Link href={`/app/depots/${l.depositId}`}><Badge tone="positive" dot={false}>Déposé</Badge></Link>}
+                  {l.depositId === "historique" ? <Badge tone="neutral" dot={false}>Historique</Badge> : l.depositId && <Link href={`/app/depots/${l.depositId}`}><Badge tone="positive" dot={false}>Déposé</Badge></Link>}
                   <span className="num font-semibold">{formatEuro(l.amountCents)}</span>
                 </li>
               ))}

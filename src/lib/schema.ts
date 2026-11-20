@@ -158,9 +158,9 @@ export const TABLES: TableDef[] = [
     columns: [
       ...church, str("reference", 30, true), date("date", true), id("serviceId"), str("serviceName", 120), str("counter1Name", 120),
       str("counter2Name", 120), int("countedCashCents", false, 0), int("countedChequeCents", false, 0), int("enteredTotalCents", false, 0),
-      int("gapCents", false, 0), en("status", SESSION_STATUSES, "draft"), date("lockedAt"), id("lockedBy"), text("notes"),
+      int("gapCents", false, 0), en("status", SESSION_STATUSES, "draft"), date("lockedAt"), id("lockedBy"), text("notes"), id("importBatchId"),
     ],
-    indexes: [idx("churchDate", "churchId", "date"), idx("status", "status")],
+    indexes: [idx("churchDate", "churchId", "date"), idx("status", "status"), idx("importBatch", "importBatchId")],
   },
   {
     id: "offering_lines", name: "Lignes d'offrandes", tablePermissions: "none",
@@ -185,9 +185,9 @@ export const TABLES: TableDef[] = [
       int("amountCents", true), date("date", true), en("paymentMethod", EXPENSE_PAY_METHODS, "bank_transfer"), id("bankAccountId"),
       id("departmentId"), id("projectId"), en("status", EXPENSE_STATUSES, "draft"), int("currentStep", false, 0), int("totalSteps", false, 0),
       id("workflowId"), { key: "stepRoles", type: "varchar", size: 20, array: true }, bool("isRegularization"), text("regularizationReason"),
-      str("advancedBy", 160), date("paidAt"), date("stepStartedAt"), str("source", 20, false), id("sourceId"), text("notes"),
+      str("advancedBy", 160), date("paidAt"), date("stepStartedAt"), str("source", 20, false), id("sourceId"), text("notes"), id("importBatchId"),
     ],
-    indexes: [idx("churchStatus", "churchId", "status"), idx("churchDate", "churchId", "date"), idx("project", "projectId")],
+    indexes: [idx("churchStatus", "churchId", "status"), idx("churchDate", "churchId", "date"), idx("project", "projectId"), idx("importBatch", "importBatchId")],
   },
   {
     id: "projects", name: "Projets & événements", tablePermissions: "none",
@@ -226,6 +226,17 @@ export const TABLES: TableDef[] = [
       { key: "sessionIds", type: "varchar", size: 36, array: true },
     ],
     indexes: [idx("churchStatus", "churchId", "status"), idx("churchDate", "churchId", "date")],
+  },
+
+  {
+    // Charges fixes / récurrentes de chaque église (loyer, énergie, assurance…)
+    id: "recurring_charges", name: "Charges fixes", tablePermissions: "none",
+    columns: [
+      ...church, str("name", 160, true), id("categoryId"), str("categoryName", 120), int("amountCents", true),
+      en("frequency", ["monthly", "quarterly", "yearly"], "monthly"), int("dueDay", false, 5), int("sortOrder", false, 0), bool("active", true),
+      en("paymentMethod", EXPENSE_PAY_METHODS, "bank_transfer"), str("supplier", 160),
+    ],
+    indexes: [idx("churchId", "churchId")],
   },
 
   // ---------------- Module 7 : Trésorerie ----------------

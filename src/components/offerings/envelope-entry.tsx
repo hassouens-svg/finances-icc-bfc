@@ -2,8 +2,9 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { EnvelopeGrid } from "./envelope-grid";
 import {
-  Plus, Trash2, Pencil, UserRound, EyeOff, Lock, Loader2, AlertTriangle, CheckCircle2, CloudCheck, RotateCw, Search, X,
+  Table2, Rows3, Plus, Trash2, Pencil, UserRound, EyeOff, Lock, Loader2, AlertTriangle, CheckCircle2, CloudCheck, RotateCw, Search, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
@@ -67,6 +68,14 @@ export function EnvelopeEntry({
   const [countedCash, setCountedCash] = React.useState(session.countedCashCents ? centsToInput(session.countedCashCents) : "");
   const [countedCheque, setCountedCheque] = React.useState(session.countedChequeCents ? centsToInput(session.countedChequeCents) : "");
   const [validating, startValidate] = React.useTransition();
+  // Tableur sur ordinateur, fiche sur téléphone (modifiable)
+  const [mode, setMode] = React.useState<"grid" | "cards">("cards");
+  React.useEffect(() => {
+    let saved: string | null = null;
+    try { saved = localStorage.getItem("icc-env-mode"); } catch {}
+    setMode(saved === "grid" || saved === "cards" ? saved : window.matchMedia("(min-width: 1024px)").matches ? "grid" : "cards");
+  }, []);
+  const changeMode = (m: "grid" | "cards") => { setMode(m); try { localStorage.setItem("icc-env-mode", m); } catch {} };
 
   const enqueue = <T,>(fn: () => Promise<T>) => {
     setSaving((n) => n + 1);
@@ -97,20 +106,27 @@ export function EnvelopeEntry({
     if (nominative && !name.trim()) { toast.error("Indiquez le nom du donateur, ou choisissez « Anonyme »."); nameRef.current?.focus(); return; }
     const d = nominative ? matchDonor(name) : undefined;
     const input: EntryInput = { donationTypeId: type, amountCents: cents, method: method as EntryInput["method"], anonymous: !nominative, donorId: d?.id ?? null, donorName: nominative ? name.trim() : null, chequeRef: method === "cheque" ? chequeRef || null : null };
-    const optimistic: SavedLine = { id: "", donationTypeId: type, donationTypeName: donationTypes.find((t) => t.id === type)?.name ?? "", amountCents: cents, method, anonymous: !nominative, donorId: d?.id ?? null, donorName: nominative ? d?.name ?? name.trim() : null, chequeRef: input.chequeRef ?? null };
-    if (editing) {
-      const key = editing.key;
-      const lineId = editing.id;
-      setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...optimistic, id: lineId, state: "saving", input } : l)));
-      enqueue(() => persist(key, input, lineId));
-    } else {
-      const key = crypto.randomUUID();
-      setLines((ls) => [{ ...optimistic, key, state: "saving", input }, ...ls]);
-      pending.current.push({ key, input });
-      flush();
-    }
+    if (editing) updateInput(editing, input);
+    else addInput(input);
     resetEntry();
   };
+
+  const optimisticOf = (input: EntryInput): SavedLine => {
+    const d = input.donorId ? donors.find((x) => x.id === input.donorId) : undefined;
+    return { id: "", donationTypeId: input.donationTypeId, donationTypeName: donationTypes.find((t) => t.id === input.donationTypeId)?.name ?? "", amountCents: input.amountCents, method: input.method, anonymous: input.anonymous, donorId: input.donorId ?? null, donorName: input.anonymous ? null : d?.name ?? input.donorName ?? null, chequeRef: input.chequeRef ?? null };
+  };
+  function addInput(input: EntryInput) {
+    const key = crypto.randomUUID();
+    setLines((ls) => [{ ...optimisticOf(input), key, state: "saving", input }, ...ls]);
+    pending.current.push({ key, input });
+    flush();
+  }
+  function updateInput(line: Line, input: EntryInput) {
+    const key = line.key;
+    const lineId = line.id;
+    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...optimisticOf(input), id: lineId, state: "saving", input } : l)));
+    enqueue(() => persist(key, input, lineId));
+  }
 
   // Envois groupés : tout ce qui est saisi pendant un envoi part dans le lot suivant.
   const pending = React.useRef<{ key: string; input: EntryInput }[]>([]);
@@ -222,6 +238,18 @@ export function EnvelopeEntry({
           </CardBody>
         </Card>
 
+        {/* Bascule tableur / fiche */}
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-[15px] font-semibold tracking-tight">2. Les enveloppes</h3>
+          <div className="flex rounded-xl bg-surface-2 p-1" role="tablist" aria-label="Mode de saisie">
+            <button type="button" role="tab" aria-selected={mode === "grid"} onClick={() => changeMode("grid")} className={cn("flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium", mode === "grid" ? "bg-bg shadow-card" : "text-muted")}><Table2 className="size-4" /> Tableur</button>
+            <button type="button" role="tab" aria-selected={mode === "cards"} onClick={() => changeMode("cards")} className={cn("flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium", mode === "cards" ? "bg-bg shadow-card" : "text-muted")}><Rows3 className="size-4" /> Fiche</button>
+          </div>
+        </div>
+        {mode === "grid" ? (
+          <EnvelopeGrid lines={lines} donationTypes={donationTypes} donors={donors} onAdd={addInput} onUpdate={(l, input) => updateInput(l as Line, input)} onDelete={(l) => del(l as Line)} onRetry={(l) => retry(l as Line)} />
+        ) : (
+          <>
         {/* 2. Les enveloppes */}
         <Card className={cn(editing && "border-accent ring-4 ring-accent-soft")}>
           <CardHeader
@@ -321,6 +349,9 @@ export function EnvelopeEntry({
             </ol>
           )}
         </Card>
+
+          </>
+        )}
 
         {/* 3. Comptage */}
         <Card>

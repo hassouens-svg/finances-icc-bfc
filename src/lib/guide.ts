@@ -72,6 +72,27 @@ export const MODULES: GuideModule[] = [
     tips: ["Dépense déjà avancée ? Cochez « régularisation » : le motif est obligatoire et le circuit reste le même.", "Projets & événements : budget prévu vs réalisé avec jauge."],
   },
   {
+    id: "charges", short: "Charges fixes", title: "Charges fixes (loyer, énergie…)", href: "/app/charges",
+    who: "Trésoriers",
+    summary: "Déclarer les charges qui reviennent chaque mois et savoir si les entrées suffisent pour les payer.",
+    steps: [
+      { title: "Déclarer les charges", text: "« Charge fixe » : loyer, électricité, assurance… avec le montant, la fréquence et la priorité (1 = le loyer).", href: "/app/charges", cta: "Charges fixes" },
+      { title: "Lire l'indicateur", text: "Vert : couvert avec marge. Orange : c'est juste. Rouge : il manque de l'argent ce mois-ci (montant indiqué). La moyenne des 3 derniers mois et l'autonomie en mois sont affichées." },
+      { title: "Créer la dépense du mois", text: "Un clic crée la dépense (loyer de novembre…) et l'envoie dans le circuit de validation." },
+    ],
+  },
+  {
+    id: "import", short: "Import Excel", title: "Importer vos fichiers Excel", href: "/app/import",
+    who: "Trésoriers",
+    summary: "Reprendre les anciens tableaux de dons et de dépenses pour démarrer avec une base complète.",
+    steps: [
+      { title: "Choisir le fichier", text: "Dons & offrandes ou Dépenses, puis votre fichier .xlsx ou .csv.", href: "/app/import", cta: "Importer" },
+      { title: "Vérifier les colonnes", text: "Date, montant, nom, type… sont reconnus automatiquement (y compris un fichier avec une colonne « Dîmes », une colonne « Offrandes »…). Corrigez si besoin, l'aperçu se met à jour." },
+      { title: "Importer", text: "Les donateurs et les catégories manquantes sont créés. Par défaut, c'est un historique qui ne modifie pas la caisse ni la banque." },
+      { title: "Annuler si besoin", text: "« Annuler cet import » supprime tout ce qu'il a créé." },
+    ],
+  },
+  {
     id: "depots", short: "Dépôts", num: 6, title: "Dépôts bancaires", href: "/app/depots",
     who: "Trésoriers",
     summary: "Porter à la banque l'argent « En caisse » (espèces et chèques des offrandes).",

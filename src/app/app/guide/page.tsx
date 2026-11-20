@@ -30,7 +30,7 @@ export default async function GuidePage() {
       <nav className="mb-6 flex flex-wrap gap-2" aria-label="Sommaire du guide">
         <a href="#demarrer" className="rounded-full border border-border bg-bg px-3 py-1.5 text-[13px] font-medium hover:border-accent/40">Premiers pas</a>
         <a href="#roles" className="rounded-full border border-border bg-bg px-3 py-1.5 text-[13px] font-medium hover:border-accent/40">Qui fait quoi</a>
-        {MODULES.map((m) => <a key={m.id} href={`#${m.id}`} className="rounded-full border border-border bg-bg px-3 py-1.5 text-[13px] font-medium hover:border-accent/40"><span className="num mr-1 text-accent">{m.num}</span>{m.title.split(" — ")[0]}</a>)}
+        {MODULES.map((m) => <a key={m.id} href={`#${m.id}`} className="rounded-full border border-border bg-bg px-3 py-1.5 text-[13px] font-medium hover:border-accent/40">{m.num && <span className="num mr-1 text-accent">{m.num}</span>}{m.short}</a>)}
         <a href="#public" className="rounded-full border border-border bg-bg px-3 py-1.5 text-[13px] font-medium hover:border-accent/40">Liens publics</a>
       </nav>
       <div className="space-y-5">
@@ -54,7 +54,7 @@ export default async function GuidePage() {
         {MODULES.map((m) => (
           <Card key={m.id} id={m.id} className="scroll-mt-24">
             <CardHeader
-              title={<span className="flex items-center gap-2.5"><span className="num grid size-7 place-items-center rounded-lg bg-accent text-[13px] font-semibold text-white">{m.num}</span>{m.title}</span>}
+              title={<span className="flex items-center gap-2.5"><span className="num grid size-7 place-items-center rounded-lg bg-accent text-[13px] font-semibold text-white">{m.num ?? "+"}</span>{m.title}</span>}
               description={<>{m.summary}<br /><span className="text-[12px]">Pour : {m.who}</span></>}
               action={<Link href={m.href} className="hidden shrink-0 items-center gap-1 text-[13px] font-medium text-accent hover:underline sm:inline-flex">Ouvrir <ArrowRight className="size-3.5" /></Link>}
             />

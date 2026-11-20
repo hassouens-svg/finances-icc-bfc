@@ -60,7 +60,7 @@ export type SessionStatus = (typeof SESSION_STATUSES)[number];
 export type OfferingSession = ChurchScoped & {
   reference: string; date: string; serviceId?: string | null; serviceName?: string | null; counter1Name?: string | null; counter2Name?: string | null;
   countedCashCents: number; countedChequeCents: number; enteredTotalCents: number; gapCents: number; status: SessionStatus;
-  lockedAt?: string | null; lockedBy?: string | null; notes?: string | null;
+  lockedAt?: string | null; lockedBy?: string | null; notes?: string | null; importBatchId?: string | null;
 };
 export type OfferingLine = ChurchScoped & {
   sessionId: string; date: string; donationTypeId?: string | null; donationTypeName?: string | null; donorId?: string | null; donorName?: string | null;
@@ -74,7 +74,7 @@ export type Expense = ChurchScoped & {
   date: string; paymentMethod: ExpensePayMethod; bankAccountId?: string | null; departmentId?: string | null; projectId?: string | null;
   status: ExpenseStatus; currentStep: number; totalSteps: number; workflowId?: string | null; stepRoles: string[]; isRegularization: boolean;
   regularizationReason?: string | null; advancedBy?: string | null; paidAt?: string | null; stepStartedAt?: string | null;
-  source?: string | null; sourceId?: string | null; notes?: string | null;
+  source?: string | null; sourceId?: string | null; notes?: string | null; importBatchId?: string | null;
 };
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 export type Project = ChurchScoped & {
@@ -119,3 +119,8 @@ export type AuditLog = ChurchScoped & {
 export type UserProfile = Row & { userId: string; displayName?: string | null; phone?: string | null; notifPrefsJson?: string | null; disabled: boolean };
 
 export type EntityType = "cr_request" | "funding_request" | "reimbursement" | "offering_session" | "expense" | "deposit" | "project" | "donor";
+
+export type RecurringCharge = ChurchScoped & {
+  name: string; categoryId?: string | null; categoryName?: string | null; amountCents: number; frequency: "monthly" | "quarterly" | "yearly";
+  dueDay: number; sortOrder: number; active: boolean; paymentMethod: ExpensePayMethod; supplier?: string | null;
+};

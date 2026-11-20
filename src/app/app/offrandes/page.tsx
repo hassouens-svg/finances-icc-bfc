@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { DataTable, type Col } from "@/components/data/data-table";
 import { PeriodFilter } from "@/components/period-filter";
 import { ExportButtons } from "@/components/export-buttons";
+import { FileUp } from "lucide-react";
 import type { OfferingLine, OfferingSession } from "@/lib/types";
 
 export const metadata = { title: "Dons & offrandes" };
@@ -51,7 +52,7 @@ export default async function OfferingsPage({ searchParams }: { searchParams: Pr
         description="Saisie par culte, comptage à deux, verrouillage après validation."
         actions={
           <>
-            <PeriodFilter value={period.key} from={sp.from} to={sp.to} />
+            <PeriodFilter value={period.key} from={sp.from} to={sp.to} />{canWrite && <Button asChild variant="secondary"><Link href="/app/import"><FileUp /> Importer Excel</Link></Button>}
             {canWrite && <Button asChild><Link href="/app/offrandes/nouvelle"><Plus /> Saisir des offrandes</Link></Button>}
           </>
         }
