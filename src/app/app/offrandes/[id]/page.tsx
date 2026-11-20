@@ -25,7 +25,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   if (!s) notFound();
   const [lines, timeline] = await Promise.all([listScoped<OfferingLine>(ctx, "offering_lines", [Query.equal("sessionId", id)], [s.churchId]), getTimeline("offering_session", id)]);
   const t = sessionTotals(lines, s.countedCashCents, s.countedChequeCents);
-  const manage = canManage(ctx, s.churchId);
+  const manage = canManage(ctx, s.churchId, "offrandes");
   const byType = new Map<string, number>();
   for (const l of lines) byType.set(l.donationTypeName ?? "—", (byType.get(l.donationTypeName ?? "—") ?? 0) + l.amountCents);
   const deposited = lines.filter((l) => l.depositId).reduce((a, l) => a + l.amountCents, 0);

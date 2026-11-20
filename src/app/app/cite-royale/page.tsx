@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Query } from "node-appwrite";
 import { Crown, Plus, List, KanbanSquare, AlertTriangle } from "lucide-react";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { getSettings } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/page-header";
@@ -30,9 +31,10 @@ const COLUMNS: [string, string[]][] = [
 export default async function CrPage({ searchParams }: { searchParams: Promise<{ vue?: string }> }) {
   const vue = (await searchParams).vue === "liste" ? "liste" : "kanban";
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "citeroyale")) return <NoAccess />;
   const [items, settings] = await Promise.all([listScoped<CrRequest>(ctx, "cr_requests", [Query.equal("archived", false), Query.orderDesc("$updatedAt")]), getSettings()]);
   const stale = (c: CrRequest) => c.status === "pending" && c.statusChangedAt && Date.now() - new Date(c.statusChangedAt).getTime() > settings.crPendingDays * 86400000;
-  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id));
+  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id, "citeroyale"));
   const late = items.filter(stale);
   const columns: Col[] = [
     { key: "title", label: "Objet", mobilePrimary: true },

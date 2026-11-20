@@ -5,7 +5,8 @@ import { MOTHER_TEAM_ID } from "@/lib/schema";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { InviteDialog, RolesDialog } from "@/components/admin/forms";
+import { CreateAccountDialog, EditAccessDialog } from "@/components/admin/access";
+import { accessSummary } from "@/lib/access";
 import { ActionButton } from "@/components/action-form";
 import { toggleUserAction, toggleSuperAdminAction } from "@/server/actions/admin";
 import { ResendInviteButton } from "./resend";
@@ -29,7 +30,7 @@ export default async function UsersPage() {
         back={{ href: "/app/admin", label: "Administration" }}
         title="Utilisateurs"
         description="Un utilisateur peut avoir des rôles différents dans plusieurs églises."
-        actions={<InviteDialog churches={ctx.allChurches.map((c) => ({ value: c.$id, label: c.name }))} canMother={ctx.isRegional} canSuper={ctx.isSuperAdmin} />}
+        actions={<CreateAccountDialog churches={ctx.allChurches.map((c) => ({ value: c.$id, label: c.name }))} canMother={ctx.isRegional} canSuper={ctx.isSuperAdmin} />}
       />
       <Card className="divide-y divide-border">
         {list.map((u) => {
@@ -49,13 +50,13 @@ export default async function UsersPage() {
                   <p className="truncate text-[13px] text-muted">{u.email} · créé le {formatDate(u.$createdAt)}</p>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col gap-1.5">
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 {ms.length === 0 && <span className="text-[13px] text-muted">Aucun accès</span>}
                 {ms.map((m) => (
-                  <div key={m.$id} className="flex items-center gap-2 text-[13px]">
+                  <div key={m.$id} className="flex flex-wrap items-center gap-2 text-[13px]">
                     <span className="min-w-0 flex-1 truncate font-medium">{m.teamName}</span>
-                    <span className="flex flex-wrap gap-1">{m.roles.map((r) => <Badge key={r} tone="progress" dot={false}>{ROLE_LABELS[r] ?? r}</Badge>)}</span>
-                    <RolesDialog teamId={m.teamId} membershipId={m.$id} roles={m.roles} userName={u.name} churchName={m.teamName} />
+                    <Badge tone="progress" dot={false} className="h-auto min-h-6 max-w-full whitespace-normal py-0.5">{m.teamId === "eglise-mere" ? "Administrateur église mère" : accessSummary(m.roles)}</Badge>
+                    <EditAccessDialog teamId={m.teamId} userId={m.userId} roles={m.roles} userName={u.name} churchName={m.teamName} />
                   </div>
                 ))}
               </div>

@@ -1,4 +1,5 @@
-import { requireContext } from "@/server/context";
+import { NoAccess } from "@/components/no-access";
+import { requireContext, canSeeModule } from "@/server/context";
 import { periodFrom, type PeriodParams } from "@/server/period";
 import { incomeFor } from "@/server/reports";
 import { PageHeader } from "@/components/ui/page-header";
@@ -43,6 +44,7 @@ function Rows({ title, rows, prev, total, prevTotal }: { title: string; rows: { 
 export default async function IncomePage({ searchParams }: { searchParams: Promise<PeriodParams> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "tresorerie")) return <NoAccess />;
   const period = periodFrom(sp, "year");
   const prevP = previousPeriod(period);
   const [cur, prev] = await Promise.all([incomeFor(ctx, period), incomeFor(ctx, prevP)]);

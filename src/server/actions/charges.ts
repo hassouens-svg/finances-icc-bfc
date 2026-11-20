@@ -20,7 +20,7 @@ export async function saveChargeAction(_: ActionResult | null, fd: FormData): Pr
       frequency: z.enum(["monthly", "quarterly", "yearly"]), dueDay: z.coerce.number().int().min(1).max(31).default(5),
       sortOrder: z.coerce.number().int().default(0), paymentMethod: z.enum(EXPENSE_PAY_METHODS).default("bank_transfer"), supplier: zOptText(160),
     }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "depenses");
     const lk = await getLookups(d.churchId);
     const data = {
       name: d.name, categoryId: d.categoryId, categoryName: lk.categories.find((c) => c.$id === d.categoryId)?.name ?? null, amountCents: d.amount,
@@ -39,7 +39,7 @@ export async function deleteChargeAction(fd: FormData): Promise<ActionResult> {
     const ctx = await requireContext();
     const c = await adminGet<RecurringCharge>("recurring_charges", String(fd.get("id")));
     if (!c) throw new UserError("Charge introuvable.");
-    assertManage(ctx, c.churchId);
+    assertManage(ctx, c.churchId, "depenses");
     await remove("recurring_charges", c.$id);
     await audit(ctx, c.churchId, "delete", "recurring_charge", c.$id, `Charge fixe supprimée : ${c.name}`, c, null);
     revalidateApp();
@@ -53,7 +53,7 @@ export async function generateChargeExpenseAction(fd: FormData): Promise<ActionR
     const ctx = await requireContext();
     const c = await adminGet<RecurringCharge>("recurring_charges", String(fd.get("id")));
     if (!c) throw new UserError("Charge introuvable.");
-    assertManage(ctx, c.churchId);
+    assertManage(ctx, c.churchId, "depenses");
     const now = new Date();
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const existing = await adminList<Expense>("expenses", [Query.equal("churchId", c.churchId), Query.equal("source", "recurring"), Query.equal("sourceId", c.$id), Query.greaterThanEqual("date", monthStart.toISOString()), Query.equal("archived", false)]);

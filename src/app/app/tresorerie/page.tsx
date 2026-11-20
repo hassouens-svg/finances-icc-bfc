@@ -1,6 +1,7 @@
+import { NoAccess } from "@/components/no-access";
 import { Query } from "node-appwrite";
 import { Wallet, Landmark, PiggyBank, Lock, Unlock, TrendingDown } from "lucide-react";
-import { requireContext, canManage, churchName, pickChurch } from "@/server/context";
+import { requireContext, canManage, churchName, pickChurch, canSeeModule } from "@/server/context";
 import { listScoped, adminList } from "@/server/data";
 import { getBalances } from "@/server/treasury";
 import { PageHeader } from "@/components/ui/page-header";
@@ -19,6 +20,7 @@ export const metadata = { title: "Trésorerie" };
 
 export default async function TreasuryPage() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "tresorerie")) return <NoAccess />;
   const { balances, accounts, movements } = await getBalances(ctx);
   const months = last12Months();
   const flows = monthlyFlows(movements, months);
@@ -40,7 +42,7 @@ export default async function TreasuryPage() {
   const crIncoming = cr.reduce((a, c) => a + Math.max(0, (c.estimatedCents ?? 0) - (c.receivedCents ?? 0)), 0);
   const forecast = balances.total - committed - pendingReimb - fundingDue;
   const thisMonth = flows[flows.length - 1]!;
-  const { church } = pickChurch(ctx);
+  const { church } = pickChurch(ctx, undefined, true, "tresorerie");
   const closeMonths = Array.from({ length: 6 }, (_, i) => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1 - i); return monthKey(d); });
   return (
     <>
@@ -94,7 +96,7 @@ export default async function TreasuryPage() {
                     <li key={m} className="flex items-center justify-between gap-2 px-5 py-2.5 text-[14px]">
                       <span>{formatMonth(`${m}-15T12:00:00Z`)}{lock && <span className="block text-[12px] text-muted">Clôturé par {lock.lockedByName}</span>}</span>
                       {lock ? (ctx.isRegional ? <ActionButton size="sm" variant="ghost" action={unlockMonthAction} payload={{ churchId: church.$id, month: m }} confirm="Rouvrir ce mois ?"><Unlock /> Rouvrir</ActionButton> : <Lock className="size-4 text-muted" />)
-                        : canManage(ctx, church.$id) ? <ActionButton size="sm" variant="secondary" action={lockMonthAction} payload={{ churchId: church.$id, month: m }} confirm={`Clôturer ${m} ? Les saisies de ce mois seront verrouillées.`}><Lock /> Clôturer</ActionButton> : null}
+                        : canManage(ctx, church.$id, "tresorerie") ? <ActionButton size="sm" variant="secondary" action={lockMonthAction} payload={{ churchId: church.$id, month: m }} confirm={`Clôturer ${m} ? Les saisies de ce mois seront verrouillées.`}><Lock /> Clôturer</ActionButton> : null}
                     </li>
                   );
                 })}

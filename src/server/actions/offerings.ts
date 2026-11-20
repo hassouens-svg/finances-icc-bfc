@@ -21,7 +21,7 @@ import type { OfferingLine, OfferingSession, Donor } from "@/lib/types";
 async function draftSession(ctx: Awaited<ReturnType<typeof requireContext>>, sessionId: string) {
   const s = await adminGet<OfferingSession>("offering_sessions", sessionId);
   if (!s) throw new UserError("Séance introuvable.");
-  assertManage(ctx, s.churchId);
+  assertManage(ctx, s.churchId, "offrandes");
   if (s.status !== "draft") throw new UserError("Cette séance est validée et verrouillée.");
   await assertNotLocked(ctx, s.churchId, s.date);
   return s;
@@ -45,7 +45,7 @@ export async function startSessionAction(_: ActionResult | null, fd: FormData): 
   return run(async () => {
     const ctx = await requireContext();
     const d = z.object({ churchId: z.string().min(1), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide."), serviceId: z.string().optional() }).parse(Object.fromEntries(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "offrandes");
     const date = dateInputToIso(d.date);
     await assertNotLocked(ctx, d.churchId, date);
     const lk = await getLookups(d.churchId);
@@ -130,7 +130,7 @@ export async function addLinesAction(sessionId: string, inputs: EntryInput[]): P
     const defaultBank = lk.bankAccounts.find((b) => b.churchId === s.churchId)?.$id ?? null;
     const donorCache = new Map<string, { id: string; name: string; created: boolean }>();
     const newDonors: { id: string; name: string }[] = [];
-    const perms = await permsFor(s.churchId);
+    const perms = await permsFor(s.churchId, "offrandes");
     const results: ({ ok: true; line: SavedLine } | { ok: false; error: string })[] = [];
     const rows: Record<string, unknown>[] = [];
     for (const raw of inputs) {
@@ -244,7 +244,7 @@ export async function validateSessionAction(sessionId: string): Promise<ActionRe
     if (totals.cash + totals.cheque > 0 && s.countedCashCents + s.countedChequeCents === 0) throw new UserError("Renseignez le montant compté (espèces et chèques).");
     const lk = await getLookups(s.churchId);
     const defaultBank = lk.bankAccounts.find((b) => b.churchId === s.churchId)?.$id ?? null;
-    const perms = await permsFor(s.churchId);
+    const perms = await permsFor(s.churchId, "tresorerie");
     const movements = lines.flatMap((l) => movementsForOfferingLine({ $id: l.$id, date: s.date, amountCents: l.amountCents, method: l.method, bankAccountId: l.bankAccountId, donationTypeName: l.donationTypeName }, defaultBank));
     if (movements.length) {
       await adminClient().db.createRows({
@@ -289,7 +289,7 @@ export async function deleteOfferingSessionAction(fd: FormData): Promise<ActionR
     const id = String(fd.get("id"));
     const s = await adminGet<OfferingSession>("offering_sessions", id);
     if (!s) throw new UserError("Séance introuvable.");
-    assertManage(ctx, s.churchId);
+    assertManage(ctx, s.churchId, "offrandes");
     if (s.status === "validated") throw new UserError("Une séance validée ne peut pas être supprimée.");
     const lines = await adminList<OfferingLine>("offering_lines", [Query.equal("sessionId", id)]);
     for (const l of lines) await remove("offering_lines", l.$id);
@@ -308,7 +308,7 @@ export async function saveDonorAction(_: ActionResult | null, fd: FormData): Pro
       id: z.string().optional(), churchId: z.string().min(1), fullName: z.string().trim().min(2, "Nom requis.").max(160),
       email: z.union([z.literal(""), z.string().trim().email("Email invalide.")]).optional(), phone: z.string().trim().max(40).optional(), address: z.string().trim().max(400).optional(),
     }).parse(Object.fromEntries(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "offrandes");
     const data = { fullName: d.fullName, email: d.email || null, phone: d.phone || null, address: d.address || null };
     if (d.id) await patch("donors", d.id, data);
     else await insert("donors", d.churchId, { ...data, consentAt: new Date().toISOString(), createdBy: ctx.user.id });
@@ -325,7 +325,7 @@ export async function anonymizeDonorAction(fd: FormData): Promise<ActionResult> 
     const id = String(fd.get("id"));
     const donor = await adminGet<Donor>("donors", id);
     if (!donor) throw new UserError("Donateur introuvable.");
-    assertManage(ctx, donor.churchId);
+    assertManage(ctx, donor.churchId, "offrandes");
     await patch("donors", id, { fullName: "Donateur anonymisé", email: null, phone: null, address: null, anonymizedAt: new Date().toISOString() });
     const lines = await adminList<OfferingLine>("offering_lines", [Query.equal("donorId", id)]);
     for (const l of lines) await patch("offering_lines", l.$id, { donorName: null, anonymous: true, donorId: null });

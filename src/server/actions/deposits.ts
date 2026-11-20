@@ -20,7 +20,7 @@ export async function createDepositAction(_: ActionResult | null, fd: FormData):
       slipNumber: zOptText(60), mode: z.enum(["sessions", "free"]), sessionIds: z.array(z.string()).default([]), excludedCheques: z.array(z.string()).default([]),
       freeCash: zOptCents(), freeCheque: zOptCents(), alreadyDeposited: zBool(),
     }).parse({ ...raw, sessionIds: raw.sessionIds ?? [], excludedCheques: raw.excludedCheques ?? [] });
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "depots");
     await assertNotLocked(ctx, d.churchId, d.date);
     let cashCents = 0, chequeCents = 0;
     let lines: OfferingLine[] = [];
@@ -64,7 +64,7 @@ export async function confirmDepositAction(_: ActionResult | null, fd: FormData)
     const d = z.object({ id: z.string(), confirmed: zCents("Le montant confirmé"), valueDate: zDate("La date de valeur"), comment: z.string().trim().max(1000).optional() }).parse(Object.fromEntries(fd));
     const dep = await adminGet<Deposit>("deposits", d.id);
     if (!dep) throw new UserError("Dépôt introuvable.");
-    assertManage(ctx, dep.churchId);
+    assertManage(ctx, dep.churchId, "depots");
     if (dep.status !== "deposited") throw new UserError("Seul un dépôt « Déposé » peut être confirmé.");
     const gap = d.confirmed - dep.cashCents - dep.chequeCents;
     if (gap !== 0 && !d.comment) throw new UserError(`Écart de ${formatEuro(gap)} : expliquez-le en commentaire.`);
@@ -82,7 +82,7 @@ export async function cancelDepositAction(fd: FormData): Promise<ActionResult> {
     const ctx = await requireContext();
     const dep = await adminGet<Deposit>("deposits", String(fd.get("id")));
     if (!dep) throw new UserError("Dépôt introuvable.");
-    assertManage(ctx, dep.churchId);
+    assertManage(ctx, dep.churchId, "depots");
     if (dep.status !== "prepared") throw new UserError("Seul un dépôt « Préparé » peut être annulé.");
     const lines = await adminList<OfferingLine>("offering_lines", [Query.equal("depositId", dep.$id)]);
     for (const l of lines) await patch("offering_lines", l.$id, { depositId: null });

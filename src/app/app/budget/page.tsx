@@ -1,6 +1,7 @@
+import { NoAccess } from "@/components/no-access";
 import { Query } from "node-appwrite";
 import { PieChart } from "lucide-react";
-import { requireContext, canManage, pickChurch } from "@/server/context";
+import { requireContext, canManage, pickChurch, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { getLookups, forChurch } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,7 +18,8 @@ export const metadata = { title: "Budget" };
 export default async function BudgetPage({ searchParams }: { searchParams: Promise<{ church?: string; year?: string }> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, sp.church, false);
+  if (!canSeeModule(ctx, "tresorerie")) return <NoAccess />;
+  const { church, allowed } = pickChurch(ctx, sp.church, false, "tresorerie");
   if (!church) return <EmptyState icon={<PieChart />} title="Aucune église" />;
   const year = Number(sp.year) || new Date().getUTCFullYear();
   const [budgets, expenses, lk] = await Promise.all([
@@ -25,7 +27,7 @@ export default async function BudgetPage({ searchParams }: { searchParams: Promi
     listScoped<Expense>(ctx, "expenses", [Query.equal("status", "paid"), Query.greaterThanEqual("date", `${year}-01-01`), Query.lessThan("date", `${year + 1}-01-01`), Query.select(["categoryId", "departmentId", "amountCents"])], [church.$id]),
     getLookups(church.$id),
   ]);
-  const manage = canManage(ctx, church.$id);
+  const manage = canManage(ctx, church.$id, "tresorerie");
   const elapsed = Math.min(1, (Date.now() - Date.UTC(year, 0, 1)) / (365 * 86400000));
   const lines = budgets.map((b) => {
     const real = expenses.filter((e) => (b.scope === "category" ? e.categoryId : e.departmentId) === b.scopeId).reduce((a, e) => a + e.amountCents, 0);

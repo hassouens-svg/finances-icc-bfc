@@ -18,7 +18,7 @@ export const metadata = { title: "Départements" };
 
 export default async function DepartmentsPage({ searchParams }: { searchParams: Promise<{ church?: string }> }) {
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, (await searchParams).church);
+  const { church, allowed } = pickChurch(ctx, (await searchParams).church, true, "parametres");
   if (!church) return <EmptyState icon={<Network />} title="Aucune église gérable" />;
   const year = new Date().getUTCFullYear();
   const [deps, expenses] = await Promise.all([

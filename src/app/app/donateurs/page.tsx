@@ -1,6 +1,7 @@
+import { NoAccess } from "@/components/no-access";
 import { Users } from "lucide-react";
 import { Query } from "node-appwrite";
-import { requireContext, churchName, canManage, pickChurch } from "@/server/context";
+import { requireContext, churchName, canManage, pickChurch, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable, type Col } from "@/components/data/data-table";
@@ -12,6 +13,7 @@ export const metadata = { title: "Donateurs" };
 
 export default async function DonorsPage() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "offrandes")) return <NoAccess />;
   const year = new Date().getUTCFullYear();
   const [donors, lines] = await Promise.all([
     listScoped<Donor>(ctx, "donors", [Query.orderAsc("fullName")]),
@@ -24,7 +26,7 @@ export default async function DonorsPage() {
     if (l.date > t.last) t.last = l.date;
     totals.set(l.donorId!, t);
   }
-  const { church } = pickChurch(ctx);
+  const { church } = pickChurch(ctx, undefined, true, "offrandes");
   const columns: Col[] = [
     { key: "name", label: "Donateur", mobilePrimary: true },
     ...(ctx.view === "all" ? [{ key: "church", label: "Église", type: "muted" as const, mobileSecondary: true }] : []),
@@ -35,7 +37,7 @@ export default async function DonorsPage() {
   const rows = donors.map((d) => ({ id: d.$id, href: `/app/donateurs/${d.$id}`, name: d.fullName, church: churchName(ctx, d.churchId), contact: [d.email, d.phone].filter(Boolean).join(" · ") || "—", last: totals.get(d.$id)?.last ?? null, total: totals.get(d.$id)?.sum ?? 0 }));
   return (
     <>
-      <PageHeader module={4} title="Donateurs" description="Seuls les dons nominatifs ont une fiche. Données limitées au nécessaire (RGPD)." actions={church && canManage(ctx, church.$id) ? <DonorDialog churchId={church.$id} /> : undefined} />
+      <PageHeader module={4} title="Donateurs" description="Seuls les dons nominatifs ont une fiche. Données limitées au nécessaire (RGPD)." actions={church && canManage(ctx, church.$id, "offrandes") ? <DonorDialog churchId={church.$id} /> : undefined} />
       <DataTable columns={columns} rows={rows} totals={{ total: rows.reduce((a, r) => a + r.total, 0) }} empty={<EmptyState icon={<Users />} title="Aucun donateur" description="Les fiches sont créées automatiquement lors de la saisie d'un don nominatif." />} />
     </>
   );

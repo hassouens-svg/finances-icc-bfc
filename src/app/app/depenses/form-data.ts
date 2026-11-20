@@ -6,7 +6,7 @@ import { listScoped } from "@/server/data";
 import type { Project } from "@/lib/types";
 
 export async function expenseFormData(ctx: AppContext, churchId?: string) {
-  const churches = ctx.churches.filter((c) => canManage(ctx, c.$id) && (churchId ? c.$id === churchId : ctx.view === "all" || c.$id === ctx.view));
+  const churches = ctx.churches.filter((c) => canManage(ctx, c.$id, "depenses") && (churchId ? c.$id === churchId : ctx.view === "all" || c.$id === ctx.view));
   const ids = churches.map((c) => c.$id);
   const [lk, projects] = await Promise.all([getLookups(ids.join(",")), listScoped<Project>(ctx, "projects", [Query.equal("archived", false), Query.equal("status", ["planned", "active"])], ids)]);
   return {

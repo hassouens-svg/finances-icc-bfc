@@ -17,7 +17,7 @@ export const metadata = { title: "Comptes bancaires" };
 
 export default async function AccountsPage({ searchParams }: { searchParams: Promise<{ church?: string }> }) {
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, (await searchParams).church);
+  const { church, allowed } = pickChurch(ctx, (await searchParams).church, true, "parametres");
   if (!church) return <EmptyState icon={<Landmark />} title="Aucune église gérable" />;
   const accounts = await adminList<BankAccount>("bank_accounts", [Query.equal("churchId", church.$id), Query.orderAsc("label")]);
   return (

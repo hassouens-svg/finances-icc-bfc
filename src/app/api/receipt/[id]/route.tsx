@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!ctx) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   if (!(await getSettings()).fiscalReceipts) return NextResponse.json({ error: "Reçus fiscaux désactivés" }, { status: 403 });
   const donor = await adminGet<Donor>("donors", id);
-  if (!donor || !canManage(ctx, donor.churchId)) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  if (!donor || !canManage(ctx, donor.churchId, "offrandes")) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   const year = Number(req.nextUrl.searchParams.get("year")) || new Date().getUTCFullYear() - 1;
   const church = await adminGet<Church>("churches", donor.churchId);
   const lines = await adminList<OfferingLine>("offering_lines", [Query.equal("donorId", id), Query.greaterThanEqual("date", `${year}-01-01`), Query.lessThan("date", `${year + 1}-01-01`)]);

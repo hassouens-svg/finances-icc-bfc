@@ -10,6 +10,7 @@ import { Logo } from "@/components/logo";
 import { ChurchLogo } from "@/components/church-logo";
 import { Dropdown, DropdownContent, DropdownItem, DropdownLabel, DropdownSeparator, DropdownTrigger } from "@/components/ui/dropdown";
 import { NAV, MOBILE_TABS, isActive, type NavItem } from "./nav";
+import { moduleOfPath } from "@/lib/access";
 import { setViewAction, logoutAction } from "@/server/actions/auth";
 
 export type ShellProps = {
@@ -19,6 +20,9 @@ export type ShellProps = {
   view: string;
   isRegional: boolean;
   canAdmin: boolean;
+  /** modules visibles (droits) ; null = tous */
+  modules: string[] | null;
+  canTeam: boolean;
   canWrite: boolean;
   unread: number;
   badges: Partial<Record<"approvals" | "reimbursements" | "funding", number>>;
@@ -45,10 +49,19 @@ function NavLink({ item, pathname, badge, onClick }: { item: NavItem; pathname: 
   );
 }
 
-function NavList({ pathname, canAdmin, badges, onNavigate }: { pathname: string; canAdmin: boolean; badges: ShellProps["badges"]; onNavigate?: () => void }) {
+/** Un lien du menu est visible si l'utilisateur a accès à son module (et aux pages d'administration / d'équipe). */
+function visible(href: string, p: Pick<ShellProps, "canAdmin" | "modules" | "canTeam">) {
+  if (href === "/app/admin") return p.canAdmin;
+  if (href === "/app/equipe") return p.canTeam;
+  if (href === "/app/import") return !p.modules || p.modules.includes("offrandes") || p.modules.includes("depenses");
+  const m = moduleOfPath(href);
+  return !m || !p.modules || p.modules.includes(m);
+}
+
+function NavList({ pathname, canAdmin, badges, onNavigate, modules, canTeam }: { pathname: string; canAdmin: boolean; badges: ShellProps["badges"]; onNavigate?: () => void; modules: string[] | null; canTeam: boolean }) {
   return (
     <nav className="space-y-5" aria-label="Navigation principale">
-      {NAV.filter((g) => !g.adminOnly || canAdmin).map((g, i) => (
+      {NAV.filter((g) => !g.adminOnly || canAdmin).filter((g) => g.items.some((it) => visible(it.href, { canAdmin, modules, canTeam }))).map((g, i) => (
         <div key={i} className="space-y-0.5">
           {g.label && (
             <p className="flex items-center gap-2 px-2.5 pb-1 text-[11px] font-medium uppercase tracking-[0.08em] text-muted">
@@ -56,7 +69,7 @@ function NavList({ pathname, canAdmin, badges, onNavigate }: { pathname: string;
               <span className="truncate">{g.label}</span>
             </p>
           )}
-          {g.items.filter((it) => it.href !== "/app/admin" || canAdmin).map((it) => (
+          {g.items.filter((it) => visible(it.href, { canAdmin, modules, canTeam })).map((it) => (
             <NavLink key={it.href} item={it} pathname={pathname} badge={it.badgeKey ? badges[it.badgeKey] : undefined} onClick={onNavigate} />
           ))}
         </div>
@@ -224,7 +237,7 @@ export function Shell(p: ShellProps) {
           <ChurchSwitcher churches={p.churches} view={p.view} isRegional={p.isRegional} />
         </div>
         <div className="flex-1 overflow-y-auto px-3 pb-4 pt-2">
-          <NavList pathname={pathname} canAdmin={p.canAdmin} badges={p.badges} />
+          <NavList pathname={pathname} canAdmin={p.canAdmin} badges={p.badges} modules={p.modules} canTeam={p.canTeam} />
         </div>
         <div className="border-t border-border p-2">
           <UserMenu user={p.user} />
@@ -253,8 +266,8 @@ export function Shell(p: ShellProps) {
 
       {/* Barre du bas (téléphone) */}
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-bg/95 pb-safe backdrop-blur-md lg:hidden" aria-label="Navigation mobile">
-        <div className="grid h-16 grid-cols-5">
-          {MOBILE_TABS.map((t) => {
+        <div className="grid h-16 auto-cols-fr grid-flow-col">
+          {MOBILE_TABS.filter((t) => visible(t.href, p)).map((t) => {
             const active = isActive(pathname, t);
             const badge = t.badgeKey ? p.badges[t.badgeKey] : 0;
             return (
@@ -278,7 +291,7 @@ export function Shell(p: ShellProps) {
                   <D.Description className="sr-only">Toutes les rubriques</D.Description>
                   <D.Close className="rounded-lg p-1.5 text-muted" aria-label="Fermer"><X className="size-4" /></D.Close>
                 </div>
-                <NavList pathname={pathname} canAdmin={p.canAdmin} badges={p.badges} onNavigate={() => setMoreOpen(false)} />
+                <NavList pathname={pathname} canAdmin={p.canAdmin} badges={p.badges} onNavigate={() => setMoreOpen(false)} modules={p.modules} canTeam={p.canTeam} />
               </D.Content>
             </D.Portal>
           </D.Root>

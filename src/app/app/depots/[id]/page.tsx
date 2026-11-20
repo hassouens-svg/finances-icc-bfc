@@ -26,7 +26,7 @@ export default async function DepositPage({ params }: { params: Promise<{ id: st
     listScoped<OfferingLine>(ctx, "offering_lines", [Query.equal("depositId", id)], [d.churchId]),
     d.sessionIds?.length ? listScoped<OfferingSession>(ctx, "offering_sessions", [Query.equal("$id", d.sessionIds)], [d.churchId]) : Promise.resolve([]),
   ]);
-  const manage = canManage(ctx, d.churchId);
+  const manage = canManage(ctx, d.churchId, "depots");
   const cheques = lines.filter((l) => l.method === "cheque");
   return (
     <>

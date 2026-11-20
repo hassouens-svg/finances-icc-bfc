@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { HandCoins, Plus, Wallet, Banknote, ScrollText } from "lucide-react";
 import { Query } from "node-appwrite";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { periodFrom, type PeriodParams } from "@/server/period";
 import { getCashInHand } from "@/server/treasury";
@@ -20,6 +21,7 @@ export const metadata = { title: "Dons & offrandes" };
 export default async function OfferingsPage({ searchParams }: { searchParams: Promise<PeriodParams> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "offrandes")) return <NoAccess />;
   const period = periodFrom(sp);
   const range = [Query.greaterThanEqual("date", period.from.toISOString()), Query.lessThan("date", period.to.toISOString())];
   const [sessions, lines, cash] = await Promise.all([
@@ -30,7 +32,7 @@ export default async function OfferingsPage({ searchParams }: { searchParams: Pr
   const total = lines.reduce((a, l) => a + l.amountCents, 0);
   const cashLike = lines.filter((l) => l.method === "cash" || l.method === "cheque").reduce((a, l) => a + l.amountCents, 0);
   const tithes = lines.filter((l) => /d[iî]me/i.test(l.donationTypeName ?? "")).reduce((a, l) => a + l.amountCents, 0);
-  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id));
+  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id, "offrandes"));
   const columns: Col[] = [
     { key: "date", label: "Date", type: "date", mobileSecondary: true },
     { key: "service", label: "Culte", mobilePrimary: true },

@@ -1,5 +1,6 @@
+import { NoAccess } from "@/components/no-access";
 import { Landmark } from "lucide-react";
-import { requireContext, canManage, pickChurch } from "@/server/context";
+import { requireContext, canManage, pickChurch, canSeeModule } from "@/server/context";
 import { getLookups } from "@/server/lookups";
 import { undepositedSessions } from "@/server/deposits";
 import { getCashInHand } from "@/server/treasury";
@@ -12,8 +13,9 @@ export const metadata = { title: "Nouveau dépôt" };
 
 export default async function NewDeposit({ searchParams }: { searchParams: Promise<{ church?: string }> }) {
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, (await searchParams).church);
-  if (!church || !canManage(ctx, church.$id)) return <EmptyState icon={<Landmark />} title="Aucune église gérable" />;
+  if (!canSeeModule(ctx, "depots")) return <NoAccess />;
+  const { church, allowed } = pickChurch(ctx, (await searchParams).church, true, "depots");
+  if (!church || !canManage(ctx, church.$id, "depots")) return <EmptyState icon={<Landmark />} title="Aucune église gérable" />;
   const [lk, sessions, cashInHand] = await Promise.all([getLookups(church.$id), undepositedSessions(church.$id), getCashInHand(ctx, [church.$id])]);
   return (
     <>

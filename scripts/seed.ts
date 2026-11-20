@@ -8,6 +8,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { DATABASE_ID, TABLES, MOTHER_TEAM_ID, REGION, FILES_BUCKET } from "../src/lib/schema";
 import { churchPermissions, regionPermissions } from "../src/lib/perms";
+import { TABLE_MODULE, ENTITY_MODULE } from "../src/lib/access";
 import { movementsForOfferingLine, movementsForDeposit, movementsForPaidExpense, depositAdjustment, type Movement } from "../src/lib/finance";
 import { selectWorkflow, type WorkflowRule } from "../src/lib/workflow";
 
@@ -38,6 +39,12 @@ const TODAY = new Date();
 type Data = Record<string, unknown>;
 const queue: Record<string, Data[]> = {};
 function row(table: string, data: Data, perms: string[], id = ID.unique()) {
+  // « church:<teamId> » → permissions par module selon la table (droits par module)
+  if (perms[0]?.startsWith("church:")) {
+    const teamId = perms[0].slice(7);
+    const mod = ["attachments", "status_history", "comments"].includes(table) ? ENTITY_MODULE[String(data.entityType)] ?? "base" : TABLE_MODULE[table] ?? "base";
+    perms = churchPermissions({ teamId }, mod);
+  }
   (queue[table] ??= []).push({ $id: id, ...data, $permissions: perms });
   return id;
 }
@@ -137,7 +144,7 @@ async function main() {
       break;
     }
     row("churches", { logoFileId, name: c.name, slug: c.slug, cityId: cityIds[i], address: c.address, isMother: c.mother, parentChurchId: c.mother ? null : motherId, pastorName: c.pastor, teamId, refPrefix: c.prefix, active: true, allowLocalLists: true }, RP, id);
-    churches.push({ id, teamId, prefix: c.prefix, name: c.name, perms: churchPermissions({ teamId }), size: c.size });
+    churches.push({ id, teamId, prefix: c.prefix, name: c.name, perms: [`church:${teamId}`], size: c.size });
   }
   try { await teams.get({ teamId: MOTHER_TEAM_ID }); } catch { await teams.create({ teamId: MOTHER_TEAM_ID, name: "Église mère — administration", roles: ["admin"] }); }
 

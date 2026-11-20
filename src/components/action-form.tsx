@@ -22,17 +22,18 @@ export function ActionForm({
     const r = await action(prev, fd);
     if (r.ok) {
       if (r.message || successMessage) toast.success(r.message ?? successMessage);
+      // Navigation lancée tout de suite : elle ne dépend pas du formulaire (qui peut disparaître)
+      if (r.redirect) router.push(r.redirect);
     } else toast.error(r.error);
     return r;
-  }, [action, successMessage]);
+  }, [action, successMessage, router]);
   const [state, formAction] = React.useActionState(wrapped, null);
   React.useEffect(() => {
     if (!state) return;
     if (state.ok) {
       if (resetOnSuccess) formRef.current?.reset();
       onSuccess?.(state);
-      if (state.redirect) router.push(state.redirect);
-      else router.refresh();
+      if (!state.redirect) router.refresh();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);

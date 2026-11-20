@@ -30,7 +30,7 @@ export default async function ExpensePage({ params }: { params: Promise<{ id: st
     listScoped<Approval>(ctx, "approvals", [Query.equal("expenseId", id), Query.orderAsc("$createdAt")], [e.churchId]),
     e.projectId ? getScoped<Project>(ctx, "projects", e.projectId) : Promise.resolve(null),
   ]);
-  const manage = canManage(ctx, e.churchId);
+  const manage = canManage(ctx, e.churchId, "depenses");
   const role = currentRole(e);
   const mayApprove = role ? canApproveAs(ctx, e.churchId, role) : false;
   const accounts = lk.bankAccounts.map((a) => ({ id: a.$id, name: a.label }));

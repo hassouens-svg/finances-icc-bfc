@@ -1,7 +1,6 @@
 "use client";
 import * as React from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { LinkBox } from "@/components/copy-button";
 import { FormDialog } from "@/components/form-dialog";
 import { Field, Input, Select, Checkbox } from "@/components/ui/input";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -98,94 +97,23 @@ export function ChurchDialog({
       <FieldErr name="address" label="Adresse" optional><Input id="address" name="address" defaultValue={church?.address ?? ""} /></FieldErr>
       <FieldErr name="pastorName" label="Pasteur / responsable" optional><Input id="pastorName" name="pastorName" defaultValue={church?.pastorName ?? ""} /></FieldErr>
       <LogoPicker current={church?.logoUrl} />
+      {!church && (
+        <div className="space-y-3 rounded-xl border border-accent/25 bg-accent-soft/40 p-3.5">
+          <div>
+            <p className="text-[14px] font-medium">Accès de l&apos;église</p>
+            <p className="text-[12px] text-muted">Le compte du responsable de cette église : il voit et gère tout pour son église et crée lui-même son équipe. Pour l&apos;église mère, il pilote aussi toute la région.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FieldErr name="accessName" label="Nom du responsable" optional><Input id="accessName" name="accessName" placeholder="Prénom Nom" /></FieldErr>
+            <FieldErr name="accessEmail" label="Email de connexion" optional><Input id="accessEmail" name="accessEmail" type="email" placeholder="eglise.dijon@…" /></FieldErr>
+            <FieldErr name="accessPassword" label="Mot de passe" optional hint="10 caractères min. Vide = lien d'invitation (sur la fiche de l'église)."><Input id="accessPassword" name="accessPassword" type="text" autoComplete="off" /></FieldErr>
+          </div>
+        </div>
+      )}
       <div className="space-y-2.5 rounded-xl bg-surface p-3.5">
         <Checkbox name="allowLocalLists" label="Autoriser cette église à ajouter ses propres catégories et types" defaultChecked={church?.allowLocalLists ?? true} />
         {isSuperAdmin && <Checkbox name="isMother" label="Église mère régionale (pilote les autres églises)" defaultChecked={church?.isMother} />}
       </div>
-    </FormDialog>
-  );
-}
-
-export function InviteDialog({ churches, defaultChurchId, canMother, canSuper = false }: { churches: Opt[]; defaultChurchId?: string; canMother: boolean; canSuper?: boolean }) {
-  const [link, setLink] = React.useState<string | null>(null);
-  const [open, setOpen] = React.useState(false);
-  const roles = [
-    { v: "treasurer", l: "Trésorier", d: "Saisit et gère les finances de l'église" },
-    { v: "pastor", l: "Pasteur / Responsable", d: "Consulte tout et valide selon le circuit" },
-    { v: "reader", l: "Lecteur", d: "Consultation seule (conseil, auditeur)" },
-  ];
-  return (
-    <>
-      <Button onClick={() => { setLink(null); setOpen(true); }}><Plus /> Créer un compte</Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Créer un compte" description="Choisissez un mot de passe maintenant, ou laissez vide pour envoyer un lien d'invitation.">
-          {link ? (
-            <div className="space-y-4">
-              <p className="text-[14px]">Invitation créée. Si l&apos;email n&apos;arrive pas, envoyez ce lien (WhatsApp, SMS…) — il est valable 7 jours :</p>
-              <LinkBox url={link} title="Votre accès à ICC BFC Finances" text="Bonjour, voici le lien pour activer votre compte ICC BFC Finances :" />
-              <Button variant="secondary" onClick={() => setOpen(false)}>Fermer</Button>
-            </div>
-          ) : (
-            <ActionForm action={inviteUserAction} onSuccess={(r: ActionResult) => { if (r.ok && r.data?.link) setLink(String(r.data.link)); else setOpen(false); }} className="space-y-4">
-              <FieldErr name="name" label="Nom complet"><Input id="name" name="name" required /></FieldErr>
-              <FieldErr name="email" label="Email"><Input id="email" name="email" type="email" required /></FieldErr>
-              <FieldErr name="password" label="Mot de passe" optional hint="10 caractères minimum. Vide = lien d'invitation à transmettre.">
-                <Input id="password" name="password" type="text" autoComplete="off" minLength={10} />
-              </FieldErr>
-              <FieldErr name="churchId" label="Église" hint={canMother ? "Facultatif pour un administrateur église mère ou un super administrateur." : undefined}>
-                <Select id="churchId" name="churchId" defaultValue={defaultChurchId ?? ""} required={!canMother}>
-                  <option value="">{canMother ? "Aucune église précise" : "Choisir…"}</option>
-                  {churches.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </Select>
-              </FieldErr>
-              <fieldset className="space-y-2">
-                <legend className="mb-1.5 text-[13px] font-medium">Rôle(s)</legend>
-                {roles.map((r) => (
-                  <label key={r.v} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50">
-                    <input type="checkbox" name="roles[]" value={r.v} className="mt-0.5 size-[18px] accent-[var(--accent)]" />
-                    <span><span className="block text-[14px] font-medium">{r.l}</span><span className="text-[13px] text-muted">{r.d}</span></span>
-                  </label>
-                ))}
-                {canMother && (
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50">
-                    <input type="checkbox" name="roles[]" value="mother_admin" className="mt-0.5 size-[18px] accent-[var(--accent)]" />
-                    <span><span className="block text-[14px] font-medium">Administrateur église mère</span><span className="text-[13px] text-muted">Voit et pilote toutes les églises de la région</span></span>
-                  </label>
-                )}
-                {canSuper && (
-                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50">
-                    <input type="checkbox" name="roles[]" value="superadmin" className="mt-0.5 size-[18px] accent-[var(--accent)]" />
-                    <span><span className="block text-[14px] font-medium">Super administrateur</span><span className="text-[13px] text-muted">Tous les droits : églises, comptes, paramètres, journaux</span></span>
-                  </label>
-                )}
-              </fieldset>
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Annuler</Button>
-                <SubmitButton>Créer le compte</SubmitButton>
-              </div>
-            </ActionForm>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-export function RolesDialog({ teamId, membershipId, roles, userName, churchName }: { teamId: string; membershipId: string; roles: string[]; userName: string; churchName: string }) {
-  return (
-    <FormDialog trigger={<Pencil />} triggerProps={{ variant: "ghost", size: "icon-sm", "aria-label": "Modifier les rôles" }} title={`Rôles de ${userName}`} description={churchName} action={updateMemberRolesAction}>
-      <input type="hidden" name="teamId" value={teamId} />
-      <input type="hidden" name="membershipId" value={membershipId} />
-      {teamId === "eglise-mere" ? (
-        <Checkbox name="roles[]" value="admin" label="Administrateur église mère" defaultChecked={roles.includes("admin")} />
-      ) : (
-        <div className="space-y-2.5">
-          {[["treasurer", "Trésorier"], ["pastor", "Pasteur / Responsable"], ["reader", "Lecteur"]].map(([v, l]) => (
-            <Checkbox key={v} name="roles[]" value={v} label={l} defaultChecked={roles.includes(v!)} />
-          ))}
-        </div>
-      )}
-      <p className="text-[13px] text-muted">Décochez tout pour retirer l&apos;accès à cette église.</p>
     </FormDialog>
   );
 }

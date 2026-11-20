@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Landmark, Plus, Wallet, AlertTriangle } from "lucide-react";
 import { Query } from "node-appwrite";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { periodFrom, type PeriodParams } from "@/server/period";
 import { getBalances } from "@/server/treasury";
@@ -21,13 +22,14 @@ export const metadata = { title: "Dépôts bancaires" };
 export default async function DepositsPage({ searchParams }: { searchParams: Promise<PeriodParams> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "depots")) return <NoAccess />;
   const period = periodFrom(sp, "quarter");
   const [deposits, { balances, accounts }, settings] = await Promise.all([
     listScoped<Deposit>(ctx, "deposits", [Query.greaterThanEqual("date", period.from.toISOString()), Query.lessThan("date", period.to.toISOString()), Query.equal("archived", false), Query.orderDesc("date")]),
     getBalances(ctx),
     getSettings(),
   ]);
-  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id));
+  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id, "depots"));
   const pending = deposits.filter((d) => d.status !== "confirmed");
   const columns: Col[] = [
     { key: "date", label: "Date", type: "date", mobileSecondary: true },

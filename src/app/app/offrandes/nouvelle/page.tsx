@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Query } from "node-appwrite";
 import { HandCoins, ChevronRight } from "lucide-react";
-import { requireContext } from "@/server/context";
+import { requireContext, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { getLookups } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,8 +17,9 @@ export const metadata = { title: "Saisir des offrandes" };
 
 export default async function NewSession() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "offrandes")) return <NoAccess />;
   const churches = manageableChurches(ctx);
-  if (!churches.length) return <EmptyState icon={<HandCoins />} title="Vous n'avez pas les droits de saisie" description="Seuls les trésoriers peuvent saisir des offrandes." />;
+  if (!churches.length) return <EmptyState icon={<HandCoins />} title="Vous n'avez pas les droits de saisie" description="Vous pouvez consulter les offrandes, pas en saisir. Demandez au responsable de l'église le droit « Gérer » sur le module Dons & offrandes." />;
   const ids = churches.map((c) => c.$id);
   const [lk, drafts] = await Promise.all([getLookups(ids.join(",")), listScoped<OfferingSession>(ctx, "offering_sessions", [Query.equal("status", "draft"), Query.orderDesc("date")], ids)]);
   return (

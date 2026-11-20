@@ -3,7 +3,7 @@ import { Query } from "node-appwrite";
 import {
   ArrowDownLeft, ArrowUpRight, Scale, PiggyBank, Wallet, RotateCcw, CheckCheck, Lightbulb, Crown, AlertTriangle, ChevronRight, Building2, Settings,
 } from "lucide-react";
-import { requireContext, churchName, canManage, canApproveAs } from "@/server/context";
+import { requireContext, churchName, canManage, canApproveAs, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { getBalances } from "@/server/treasury";
 import { periodFrom, type PeriodParams } from "@/server/period";
@@ -62,6 +62,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const alerts = await computeAlerts(ctx, movements, accounts);
   const delta = (a: number, b: number) => (b ? `${a >= b ? "+" : ""}${Math.round(((a - b) / Math.abs(b)) * 100)} % vs ${prev.label.toLowerCase()}` : prev.label);
   const isAll = ctx.view === "all";
+  const see = (m: Parameters<typeof canSeeModule>[1]) => canSeeModule(ctx, m);
   const charges = !isAll && ctx.activeChurch ? await chargesOverview(ctx, ctx.activeChurch.$id) : null;
   const title = isAll ? "Vue régionale" : ctx.activeChurch?.name ?? "Tableau de bord";
   const todo = [
@@ -91,17 +92,17 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
       </nav>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Argent entré" value={inc.totalProducts} tone="accent" icon={<ArrowDownLeft />} hint={delta(inc.totalProducts, incPrev.totalProducts)} href="/app/offrandes" />
-        <KpiCard label="Argent sorti" value={inc.totalCharges} icon={<ArrowUpRight />} hint={delta(inc.totalCharges, incPrev.totalCharges)} href="/app/depenses" />
-        <KpiCard label="Résultat" value={inc.result} tone={inc.result >= 0 ? "positive" : "negative"} icon={<Scale />} hint={period.label} href="/app/compte-de-resultat" />
-        <KpiCard label="Trésorerie disponible" value={balances.total} icon={<PiggyBank />} hint={`Banque ${formatEuro(balances.bankTotal)}`} href="/app/tresorerie" />
+        {see("offrandes") && <KpiCard label="Argent entré" value={inc.totalProducts} tone="accent" icon={<ArrowDownLeft />} hint={delta(inc.totalProducts, incPrev.totalProducts)} href="/app/offrandes" />}
+        {see("depenses") && <KpiCard label="Argent sorti" value={inc.totalCharges} icon={<ArrowUpRight />} hint={delta(inc.totalCharges, incPrev.totalCharges)} href="/app/depenses" />}
+        {see("tresorerie") && <KpiCard label="Résultat" value={inc.result} tone={inc.result >= 0 ? "positive" : "negative"} icon={<Scale />} hint={period.label} href="/app/compte-de-resultat" />}
+        {see("tresorerie") && <KpiCard label="Trésorerie disponible" value={balances.total} icon={<PiggyBank />} hint={`Banque ${formatEuro(balances.bankTotal)}`} href="/app/tresorerie" />}
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiCard label="En caisse (à déposer)" value={balances.cash} tone={balances.cash > 0 ? "warning" : "default"} icon={<Wallet />} href="/app/depots" />
-        <KpiCard label="Remboursements en attente" value={pendingReimb.length} kind="count" icon={<RotateCcw />} href="/app/remboursements" />
-        <KpiCard label="Dépenses à valider" value={toApprove.length} kind="count" icon={<CheckCheck />} href="/app/a-valider" />
-        <KpiCard label="Besoins en attente" value={funding.length} kind="count" icon={<Lightbulb />} href="/app/besoins" />
-        <KpiCard label="Demandes Cité Royale" value={cr.length} kind="count" icon={<Crown />} href="/app/cite-royale" hint="en cours" />
+        {see("depots") || see("tresorerie") && <KpiCard label="En caisse (à déposer)" value={balances.cash} tone={balances.cash > 0 ? "warning" : "default"} icon={<Wallet />} href="/app/depots" />}
+        {see("remboursements") && <KpiCard label="Remboursements en attente" value={pendingReimb.length} kind="count" icon={<RotateCcw />} href="/app/remboursements" />}
+        {see("depenses") && <KpiCard label="Dépenses à valider" value={toApprove.length} kind="count" icon={<CheckCheck />} href="/app/a-valider" />}
+        {see("besoins") && <KpiCard label="Besoins en attente" value={funding.length} kind="count" icon={<Lightbulb />} href="/app/besoins" />}
+        {see("citeroyale") && <KpiCard label="Demandes Cité Royale" value={cr.length} kind="count" icon={<Crown />} href="/app/cite-royale" hint="en cours" />}
       </div>
 
       {isAll && (
@@ -154,8 +155,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-3">
-        <Card><CardHeader title="Dépenses par catégorie" description={period.label} /><CardBody><Donut data={inc.charges} empty="Aucune dépense payée sur la période" /></CardBody></Card>
-        <Card><CardHeader title="Dons par type" description={period.label} /><CardBody><Donut data={inc.products} empty="Aucun don sur la période" /></CardBody></Card>
+        {see("depenses") && <Card><CardHeader title="Dépenses par catégorie" description={period.label} /><CardBody><Donut data={inc.charges} empty="Aucune dépense payée sur la période" /></CardBody></Card>}
+        {see("offrandes") && <Card><CardHeader title="Dons par type" description={period.label} /><CardBody><Donut data={inc.products} empty="Aucun don sur la période" /></CardBody></Card>}
         <Card>
           <CardHeader title="Alertes" description={alerts.length ? undefined : "Aucune alerte"} />
           <ul className="space-y-2 px-5 pb-5">

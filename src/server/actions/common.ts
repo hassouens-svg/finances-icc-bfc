@@ -8,6 +8,7 @@ import { statusDef } from "@/lib/status";
 import { notifyRequester } from "../notify";
 import type { ActionResult } from "@/lib/action-types";
 import { ENTITY_TABLE, saveFiles } from "../files";
+import { ENTITY_MODULE } from "@/lib/access";
 
 export async function uploadAttachmentAction(fd: FormData): Promise<ActionResult> {
   return run(async () => {
@@ -18,7 +19,7 @@ export async function uploadAttachmentAction(fd: FormData): Promise<ActionResult
     if (!table) throw new ForbiddenError();
     const row = await adminGet<{ $id: string; $createdAt: string; $updatedAt: string; churchId: string }>(table, entityId);
     if (!row) throw new UserError("Élément introuvable.");
-    assertManage(ctx, row.churchId);
+    assertManage(ctx, row.churchId, ENTITY_MODULE[entityType]);
     const files = fd.getAll("files").filter((f): f is File => f instanceof File);
     if (!files.length) throw new UserError("Choisissez au moins un fichier.");
     const ids = await saveFiles(files, row.churchId, entityType, entityId, ctx.user.name);
@@ -36,7 +37,7 @@ export async function addCommentAction(_: ActionResult | null, fd: FormData): Pr
     if (!table) throw new ForbiddenError();
     const row = await adminGet<{ $id: string; $createdAt: string; $updatedAt: string; churchId: string }>(table, d.entityId);
     if (!row) throw new UserError("Élément introuvable.");
-    assertRead(ctx, row.churchId);
+    assertRead(ctx, row.churchId, ENTITY_MODULE[d.entityType]);
     await insert("comments", row.churchId, { entityType: d.entityType, entityId: d.entityId, authorId: ctx.user.id, authorName: ctx.user.name, body: d.body, internal: d.internal === "on" });
     revalidateApp();
     return { ok: true, message: "Commentaire ajouté." };
@@ -57,7 +58,7 @@ export async function transitionAction(_: ActionResult | null, fd: FormData): Pr
     // La validation « église mère » d'une demande Cité Royale est réservée à l'église mère
     if (d.entityType === "cr_request" && row.status === "mother_review") {
       if (!ctx.isRegional) throw new ForbiddenError("Réservé à l'église mère.");
-    } else if (!canManage(ctx, row.churchId)) throw new ForbiddenError();
+    } else if (!canManage(ctx, row.churchId, ENTITY_MODULE[d.entityType])) throw new ForbiddenError();
     if (t.comment === "required" && !d.comment) throw new UserError("Un commentaire est obligatoire pour ce choix.");
     const extra: Record<string, unknown> = { status: d.to };
     if (d.entityType === "cr_request") extra.statusChangedAt = new Date().toISOString();

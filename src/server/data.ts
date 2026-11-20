@@ -3,7 +3,8 @@ import { ID, Permission, Role, AppwriteException } from "node-appwrite";
 import { revalidatePath } from "next/cache";
 import { adminClient, userClient, listAll, getRow, Query, DATABASE_ID } from "@/lib/appwrite/server";
 import { REGION } from "@/lib/schema";
-import { getAllChurches, type AppContext, ForbiddenError } from "./context";
+import { TABLE_MODULE, ENTITY_MODULE, type ModuleKey } from "@/lib/access";
+import { getAllChurches, canRead, type AppContext, ForbiddenError } from "./context";
 import { monthKey } from "@/lib/period";
 import type { Church, Row } from "@/lib/types";
 
@@ -21,9 +22,15 @@ export async function churchById(id: string) {
   return c;
 }
 
-export async function permsFor(churchId: string) {
+export async function permsFor(churchId: string, module: ModuleKey | "base" | "audit" = "base") {
   if (churchId === REGION) return regionPermissions();
-  return churchPermissions(await churchById(churchId));
+  return churchPermissions(await churchById(churchId), module);
+}
+
+/** Module d'une ligne : selon la table, ou selon l'élément auquel elle se rattache (pièces jointes, historique…). */
+export function moduleOf(table: string, data: Record<string, unknown>): ModuleKey | "base" | "audit" {
+  if (["attachments", "status_history", "comments"].includes(table)) return ENTITY_MODULE[String(data.entityType)] ?? "base";
+  return TABLE_MODULE[table] ?? "base";
 }
 
 // ---------------- Lectures (permissions Appwrite appliquées) ----------------
@@ -31,9 +38,10 @@ export async function readDb() {
   return (await userClient()).db;
 }
 
-/** Liste les lignes des églises de la vue courante (ou d'églises précises). */
+/** Liste les lignes des églises de la vue courante (ou d'églises précises), limitées aux modules autorisés. */
 export async function listScoped<T extends Row>(ctx: AppContext, table: string, queries: string[] = [], churchIds?: string[]): Promise<T[]> {
-  const ids = churchIds ?? ctx.scopeIds;
+  const mod = TABLE_MODULE[table];
+  const ids = (churchIds ?? ctx.scopeIds).filter((id) => (mod && mod !== "base" && mod !== "audit" ? canRead(ctx, id, mod) : mod === "audit" ? canAudit(ctx, id) : canRead(ctx, id)));
   if (!ids.length) return [];
   const db = await readDb();
   return listAll<T>(db, table, [Query.equal("churchId", ids), ...queries]);
@@ -43,8 +51,15 @@ export async function getScoped<T extends Row & { churchId: string }>(ctx: AppCo
   const db = await readDb();
   const row = await getRow<T>(db, table, id);
   if (!row) return null;
-  if (!ctx.isRegional && !ctx.roles[row.churchId]?.length) return null;
+  const mod = TABLE_MODULE[table];
+  if (!canRead(ctx, row.churchId, mod && mod !== "base" && mod !== "audit" ? mod : undefined)) return null;
   return row;
+}
+
+function canAudit(ctx: AppContext, churchId: string) {
+  if (ctx.isRegional) return true;
+  const a = ctx.access[churchId];
+  return !!a && (a.admin || a.preset === "treasurer" || a.preset === "pastor");
 }
 
 // ---------------- Écritures (après contrôle des droits) ----------------
@@ -52,7 +67,7 @@ type Data = Record<string, unknown>;
 
 export async function insert<T extends Row>(table: string, churchId: string, data: Data, opts?: { id?: string; permissions?: string[]; transactionId?: string }) {
   const { db } = adminClient();
-  const permissions = opts?.permissions ?? (await permsFor(churchId));
+  const permissions = opts?.permissions ?? (await permsFor(churchId, moduleOf(table, data)));
   return (await db.createRow({
     databaseId: DATABASE_ID, tableId: table, rowId: opts?.id ?? ID.unique(), data: { churchId, ...data }, permissions,
     transactionId: opts?.transactionId,

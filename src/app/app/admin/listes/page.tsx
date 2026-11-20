@@ -18,7 +18,7 @@ export const metadata = { title: "Listes configurables" };
 export default async function ListsPage({ searchParams }: { searchParams: Promise<{ church?: string; scope?: string }> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, sp.church);
+  const { church, allowed } = pickChurch(ctx, sp.church, true, "parametres");
   const scope = sp.scope === "local" && church ? church.$id : ctx.isRegional ? REGION : church?.$id ?? REGION;
   const canEdit = scope === REGION ? ctx.isRegional : ctx.isRegional || !!church?.allowLocalLists;
   const items = await adminList<ListItem>("list_items", [Query.equal("churchId", scope), Query.orderAsc("sortOrder"), Query.orderAsc("name")]);

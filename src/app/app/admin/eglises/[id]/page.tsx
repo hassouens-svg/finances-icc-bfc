@@ -6,7 +6,8 @@ import { adminClient } from "@/lib/appwrite/server";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChurchDialog, InviteDialog, RolesDialog } from "@/components/admin/forms";
+import { ChurchDialog } from "@/components/admin/forms";
+import { TeamCard } from "@/components/admin/team-card";
 import { ActionButton } from "@/components/action-form";
 import { toggleChurchActiveAction } from "@/server/actions/admin";
 import { ROLE_LABELS } from "@/lib/status";
@@ -47,25 +48,9 @@ export default async function ChurchDetail({ params }: { params: Promise<{ id: s
           </>
         }
       />
-      <div className="mb-5"><ChurchSteps s={setup!} canInvite={ctx.isRegional} /></div>
+      <div className="mb-5"><ChurchSteps s={setup!} canInvite /></div>
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-        <Card>
-          <CardHeader title="Équipe" description="Personnes ayant accès aux données de cette église." action={<InviteDialog churches={[{ value: c.$id, label: c.name }]} defaultChurchId={c.$id} canMother={false} />} />
-          <ul className="divide-y divide-border border-t border-border">
-            {members.length === 0 && <li className="px-5 py-6 text-[14px] text-muted">Aucun membre. Invitez au moins un trésorier.</li>}
-            {members.map((m) => (
-              <li key={m.$id} className="flex items-center gap-3 px-5 py-3">
-                <span className="grid size-9 place-items-center rounded-full bg-surface-2 text-[12px] font-semibold">{initials(m.userName)}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-medium">{m.userName || m.userEmail}</span>
-                  <span className="block truncate text-[13px] text-muted">{m.userEmail}</span>
-                </span>
-                <span className="hidden flex-wrap gap-1 sm:flex">{m.roles.map((r) => <Badge key={r} tone="progress" dot={false}>{ROLE_LABELS[r] ?? r}</Badge>)}</span>
-                <RolesDialog teamId={c.teamId} membershipId={m.$id} roles={m.roles} userName={m.userName} churchName={c.name} />
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <TeamCard ctx={ctx} church={c} />
         <Card>
           <CardHeader title="Raccourcis" />
           <CardBody className="grid gap-2">

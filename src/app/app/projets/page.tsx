@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Query } from "node-appwrite";
 import { FolderKanban } from "lucide-react";
-import { requireContext, canManage, churchName, pickChurch } from "@/server/context";
+import { requireContext, canManage, churchName, pickChurch, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -17,12 +18,13 @@ export const metadata = { title: "Projets & événements" };
 
 export default async function ProjectsPage() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "depenses")) return <NoAccess />;
   const [projects, expenses] = await Promise.all([
     listScoped<Project>(ctx, "projects", [Query.equal("archived", false), Query.orderDesc("$createdAt")]),
     listScoped<Expense>(ctx, "expenses", [Query.isNotNull("projectId"), Query.equal("archived", false), Query.select(["projectId", "amountCents", "status"])]),
   ]);
-  const { church } = pickChurch(ctx);
-  const dialog = church && canManage(ctx, church.$id) ? <ProjectDialog churchId={church.$id} /> : undefined;
+  const { church } = pickChurch(ctx, undefined, true, "depenses");
+  const dialog = church && canManage(ctx, church.$id, "depenses") ? <ProjectDialog churchId={church.$id} /> : undefined;
   return (
     <>
       <PageHeader module={5} title="Projets & événements" description="Budget prévu vs réalisé, dépenses rattachées, jalons." actions={<><ExportButtons entity="projects" />{dialog}</>} />

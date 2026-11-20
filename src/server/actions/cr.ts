@@ -19,7 +19,7 @@ export async function saveCrAction(_: ActionResult | null, fd: FormData): Promis
       quantity: z.coerce.number().int().min(0).optional(), estimated: zOptCents(), priority: z.enum(PRIORITIES).default("normal"), wishedDate: zOptDate(),
       departmentId: zId(), contactName: zOptText(160), sendChannel: zOptText(80), crReference: zOptText(80), viaMother: zBool(), submitNow: zBool(),
     }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "citeroyale");
     const church = await churchById(d.churchId);
     const data = {
       title: d.title, typeId: d.typeId, reason: d.reason, description: d.description, quantity: d.quantity ?? null, estimatedCents: d.estimated, priority: d.priority,
@@ -62,7 +62,7 @@ export async function submitCrAction(fd: FormData): Promise<ActionResult> {
     const ctx = await requireContext();
     const cr = await adminGet<CrRequest>("cr_requests", String(fd.get("id")));
     if (!cr) throw new UserError("Demande introuvable.");
-    assertManage(ctx, cr.churchId);
+    assertManage(ctx, cr.churchId, "citeroyale");
     if (cr.status !== "draft") throw new UserError("Cette demande est déjà lancée.");
     await submitCr(ctx, cr);
     await audit(ctx, cr.churchId, "status", "cr_request", cr.$id, `Demande ${cr.reference} lancée`);
@@ -77,7 +77,7 @@ export async function receiveCrAction(_: ActionResult | null, fd: FormData): Pro
     const d = z.object({ id: z.string(), received: zOptCents(), receivedQuantity: z.coerce.number().int().min(0).optional(), receivedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), full: zBool(), comment: z.string().trim().max(2000).optional() }).parse(formToObject(fd));
     const cr = await adminGet<CrRequest>("cr_requests", d.id);
     if (!cr) throw new UserError("Demande introuvable.");
-    assertManage(ctx, cr.churchId);
+    assertManage(ctx, cr.churchId, "citeroyale");
     if (!["approved", "received_partial"].includes(cr.status)) throw new UserError("La réception n'est possible qu'après validation par la Cité Royale.");
     const to = d.full ? "received_full" : "received_partial";
     const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);

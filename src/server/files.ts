@@ -2,6 +2,7 @@ import "server-only";
 import { ID } from "node-appwrite";
 import { adminClient } from "@/lib/appwrite/server";
 import { churchPermissions } from "@/lib/perms";
+import { ENTITY_MODULE } from "@/lib/access";
 import { FILES_BUCKET } from "@/lib/schema";
 import { insert, churchById } from "./data";
 import { UserError } from "./action";
@@ -43,7 +44,7 @@ export async function saveFiles(files: File[], churchId: string, entityType: str
     const ext = mime === "application/pdf" ? "pdf" : mime.split("/")[1]!.replace("jpeg", "jpg");
     const safeName = (f.name || `fichier.${ext}`).replace(/[^\w.\- ]+/g, "_").slice(0, 120);
     const file = new File([buf], safeName.includes(".") ? safeName : `${safeName}.${ext}`, { type: mime });
-    const created = await storage.createFile({ bucketId: FILES_BUCKET, fileId: ID.unique(), file, permissions: churchPermissions(church) });
+    const created = await storage.createFile({ bucketId: FILES_BUCKET, fileId: ID.unique(), file, permissions: churchPermissions(church, ENTITY_MODULE[entityType] ?? "base") });
     await insert("attachments", churchId, { entityType, entityId, fileId: created.$id, bucket: FILES_BUCKET, name: file.name, mime, size: f.size, uploadedBy });
     saved.push(created.$id);
   }

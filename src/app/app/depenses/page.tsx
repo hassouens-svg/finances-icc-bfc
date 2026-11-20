@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Receipt, Plus, Clock, CheckCircle2, Banknote } from "lucide-react";
 import { Query } from "node-appwrite";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { periodFrom, type PeriodParams } from "@/server/period";
 import { PageHeader } from "@/components/ui/page-header";
@@ -20,9 +21,10 @@ export const metadata = { title: "Dépenses" };
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<PeriodParams> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "depenses")) return <NoAccess />;
   const period = periodFrom(sp);
   const expenses = await listScoped<Expense>(ctx, "expenses", [Query.greaterThanEqual("date", period.from.toISOString()), Query.lessThan("date", period.to.toISOString()), Query.equal("archived", false), Query.orderDesc("date")]);
-  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id));
+  const canWrite = ctx.scopeIds.some((id) => canManage(ctx, id, "depenses"));
   const s = (st: string[]) => expenses.filter((e) => st.includes(e.status)).reduce((a, e) => a + e.amountCents, 0);
   const columns: Col[] = [
     { key: "date", label: "Date", type: "date", mobileSecondary: true },

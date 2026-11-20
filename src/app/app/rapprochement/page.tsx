@@ -1,6 +1,7 @@
+import { NoAccess } from "@/components/no-access";
 import { Query } from "node-appwrite";
 import { BookCheck } from "lucide-react";
-import { requireContext, canManage, pickChurch } from "@/server/context";
+import { requireContext, canManage, pickChurch, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { getLookups } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,7 +18,8 @@ export const metadata = { title: "Rapprochement bancaire" };
 export default async function ReconciliationPage({ searchParams }: { searchParams: Promise<{ church?: string; account?: string }> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, sp.church);
+  if (!canSeeModule(ctx, "tresorerie")) return <NoAccess />;
+  const { church, allowed } = pickChurch(ctx, sp.church, true, "tresorerie");
   if (!church) return <EmptyState icon={<BookCheck />} title="Aucune église gérable" />;
   const lk = await getLookups(church.$id);
   const account = lk.bankAccounts.find((a) => a.$id === sp.account) ?? lk.bankAccounts[0];
@@ -32,7 +34,7 @@ export default async function ReconciliationPage({ searchParams }: { searchParam
   const label = (m: CashMovement) => m.sourceType === "deposit" ? `Dépôt ${deposits.find((d) => d.$id === m.sourceId)?.reference ?? ""}` : m.sourceType === "expense" ? `Dépense ${expenses.find((e) => e.$id === m.sourceId)?.reference ?? ""} — ${m.label}` : m.label ?? m.sourceType;
   const candidates = movs.map((m) => ({ id: m.$id, label: `${formatDate(m.date)} · ${label(m)} · ${formatEuro(m.direction === "in" ? m.amountCents : -m.amountCents)}`, amount: m.direction === "in" ? m.amountCents : -m.amountCents, date: m.date }));
   const matched = lines.filter((l) => l.matchedId).length;
-  const manage = canManage(ctx, church.$id);
+  const manage = canManage(ctx, church.$id, "tresorerie");
   return (
     <>
       <PageHeader module={7} title="Rapprochement bancaire" description="Importez le relevé (CSV) puis pointez chaque ligne avec un dépôt, une dépense ou un don." />

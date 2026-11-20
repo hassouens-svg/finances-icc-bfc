@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Query } from "node-appwrite";
 import { CheckCheck, Paperclip } from "lucide-react";
-import { requireContext, canApproveAs, churchName } from "@/server/context";
+import { requireContext, canApproveAs, churchName, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export const metadata = { title: "À valider" };
 
 export default async function ToApprovePage() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "depenses")) return <NoAccess />;
   const pending = await listScoped<Expense>(ctx, "expenses", [Query.equal("status", "in_approval"), Query.equal("archived", false), Query.orderAsc("stepStartedAt")]);
   const mine = pending.filter((e) => { const r = currentRole(e); return r && canApproveAs(ctx, e.churchId, r); });
   const others = pending.filter((e) => !mine.includes(e));

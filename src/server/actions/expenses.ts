@@ -26,7 +26,7 @@ export async function saveExpenseAction(_: ActionResult | null, fd: FormData): P
   return run(async () => {
     const ctx = await requireContext();
     const d = expenseSchema.parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "depenses");
     await assertNotLocked(ctx, d.churchId, d.date);
     if (d.isRegularization && !d.regularizationReason) throw new UserError("Le motif de la régularisation est obligatoire.");
     if (d.paymentMethod !== "cash" && !d.bankAccountId) throw new UserError("Choisissez le compte bancaire utilisé.");
@@ -65,7 +65,7 @@ export async function submitExpenseAction(fd: FormData): Promise<ActionResult> {
     const ctx = await requireContext();
     const e = await adminGet<Expense>("expenses", String(fd.get("id")));
     if (!e) throw new UserError("Dépense introuvable.");
-    assertManage(ctx, e.churchId);
+    assertManage(ctx, e.churchId, "depenses");
     if (!["draft", "rejected"].includes(e.status)) throw new UserError("Cette dépense est déjà soumise.");
     await submitExpenseInternal(ctx, e);
     await audit(ctx, e.churchId, "status", "expense", e.$id, `Dépense ${e.reference} soumise à validation`);
@@ -113,7 +113,7 @@ export async function payExpenseAction(_: ActionResult | null, fd: FormData): Pr
     const d = z.object({ id: z.string(), paidAt: zDate("La date de paiement"), bankAccountId: zId() }).parse(Object.fromEntries(fd));
     const e = await adminGet<Expense>("expenses", d.id);
     if (!e) throw new UserError("Dépense introuvable.");
-    assertManage(ctx, e.churchId);
+    assertManage(ctx, e.churchId, "depenses");
     await assertNotLocked(ctx, e.churchId, d.paidAt);
     await payExpenseInternal(ctx, e, d.paidAt, d.bankAccountId);
     const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
@@ -129,7 +129,7 @@ export async function deleteExpenseAction(fd: FormData): Promise<ActionResult> {
     const ctx = await requireContext();
     const e = await adminGet<Expense>("expenses", String(fd.get("id")));
     if (!e) throw new UserError("Dépense introuvable.");
-    assertManage(ctx, e.churchId);
+    assertManage(ctx, e.churchId, "depenses");
     if (e.status !== "draft") throw new UserError("Seul un brouillon peut être supprimé.");
     await patch("expenses", e.$id, { archived: true });
     await audit(ctx, e.churchId, "delete", "expense", e.$id, `Brouillon ${e.reference} supprimé`, e, null);
@@ -146,7 +146,7 @@ export async function approveReimbursementAction(_: ActionResult | null, fd: For
     const d = z.object({ id: z.string(), categoryId: z.string().min(1, "Choisissez une catégorie."), comment: z.string().trim().max(2000).optional() }).parse(Object.fromEntries(fd));
     const r = await adminGet<Reimbursement>("reimbursements", d.id);
     if (!r) throw new UserError("Demande introuvable.");
-    assertManage(ctx, r.churchId);
+    assertManage(ctx, r.churchId, "remboursements");
     if (!["submitted", "checking"].includes(r.status)) throw new UserError("Cette demande a déjà été traitée.");
     const lk = await getLookups(r.churchId);
     const cat = lk.categories.find((c) => c.$id === d.categoryId);
@@ -180,7 +180,7 @@ export async function payReimbursementAction(_: ActionResult | null, fd: FormDat
     const d = z.object({ id: z.string(), paidAt: zDate("La date"), paidMethod: z.enum(["transfer", "cash", "cheque"]), payeeBankInfo: z.string().trim().max(200).optional() }).parse(Object.fromEntries(fd));
     const r = await adminGet<Reimbursement>("reimbursements", d.id);
     if (!r || !r.expenseId) throw new UserError("Demande introuvable ou non validée.");
-    assertManage(ctx, r.churchId);
+    assertManage(ctx, r.churchId, "remboursements");
     const e = await adminGet<Expense>("expenses", r.expenseId);
     if (!e) throw new UserError("Dépense liée introuvable.");
     if (e.status !== "approved") throw new UserError("La dépense liée n'a pas terminé son circuit de validation : remboursement impossible pour l'instant.");
@@ -205,7 +205,7 @@ export async function decideFundingAction(_: ActionResult | null, fd: FormData):
     const d = z.object({ id: z.string(), decision: z.enum(["approved", "partially_approved"]), approved: zCents("Le montant approuvé"), comment: z.string().trim().max(2000).optional() }).parse(Object.fromEntries(fd));
     const f = await adminGet<FundingRequest>("funding_requests", d.id);
     if (!f) throw new UserError("Besoin introuvable.");
-    assertManage(ctx, f.churchId);
+    assertManage(ctx, f.churchId, "besoins");
     if (!["received", "reviewing"].includes(f.status)) throw new UserError("Ce besoin a déjà été traité.");
     const decision = d.approved < f.estimatedCents ? "partially_approved" : d.decision;
     if (decision === "partially_approved" && !d.comment) throw new UserError("Expliquez l'approbation partielle en commentaire.");
@@ -224,7 +224,7 @@ export async function convertFundingAction(_: ActionResult | null, fd: FormData)
     const d = z.object({ id: z.string(), target: z.enum(["expense", "cr"]), categoryId: z.string().optional() }).parse(Object.fromEntries(fd));
     const f = await adminGet<FundingRequest>("funding_requests", d.id);
     if (!f) throw new UserError("Besoin introuvable.");
-    assertManage(ctx, f.churchId);
+    assertManage(ctx, f.churchId, "besoins");
     if (!["approved", "partially_approved"].includes(f.status)) throw new UserError("Seul un besoin approuvé peut être converti.");
     if (f.convertedToId) throw new UserError("Ce besoin a déjà été converti.");
     const amount = f.approvedCents ?? f.estimatedCents;
@@ -268,7 +268,7 @@ export async function saveProjectAction(_: ActionResult | null, fd: FormData): P
       startDate: z.string().optional(), endDate: z.string().optional(), ownerName: zOptText(160), status: z.enum(["planned", "active", "done", "cancelled"]).default("active"),
       milestones: z.string().optional(),
     }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "depenses");
     const ms = (d.milestones ?? "").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => ({ label: l.replace(/^\[x\]\s*/i, ""), done: /^\[x\]/i.test(l) }));
     const data = {
       name: d.name, description: d.description, budgetCents: d.budget, startDate: d.startDate ? new Date(`${d.startDate}T12:00:00Z`).toISOString() : null,

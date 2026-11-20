@@ -6,7 +6,7 @@ import { listScoped } from "@/server/data";
 import type { Donor } from "@/lib/types";
 
 export function manageableChurches(ctx: AppContext) {
-  return ctx.churches.filter((c) => canManage(ctx, c.$id) && (ctx.view === "all" || c.$id === ctx.view));
+  return ctx.churches.filter((c) => canManage(ctx, c.$id, "offrandes") && (ctx.view === "all" || c.$id === ctx.view));
 }
 
 export async function entryData(ctx: AppContext, churchId: string) {

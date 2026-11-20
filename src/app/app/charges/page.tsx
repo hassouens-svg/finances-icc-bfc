@@ -1,5 +1,6 @@
+import { NoAccess } from "@/components/no-access";
 import { CalendarClock } from "lucide-react";
-import { requireContext, canManage, pickChurch } from "@/server/context";
+import { requireContext, canManage, pickChurch, canSeeModule } from "@/server/context";
 import { getLookups, forChurch } from "@/server/lookups";
 import { chargesOverview } from "@/server/charges";
 import { PageHeader } from "@/components/ui/page-header";
@@ -20,10 +21,11 @@ const FREQ: Record<string, string> = { monthly: "par mois", quarterly: "par trim
 
 export default async function ChargesPage({ searchParams }: { searchParams: Promise<{ church?: string }> }) {
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, (await searchParams).church, false);
+  if (!canSeeModule(ctx, "depenses")) return <NoAccess />;
+  const { church, allowed } = pickChurch(ctx, (await searchParams).church, false, "depenses");
   if (!church) return <EmptyState icon={<CalendarClock />} title="Aucune église" />;
   const [lk, o] = await Promise.all([getLookups(church.$id), chargesOverview(ctx, church.$id)]);
-  const manage = canManage(ctx, church.$id);
+  const manage = canManage(ctx, church.$id, "depenses");
   const cats = forChurch(lk.categories, church.$id).map((c) => ({ id: c.$id, name: c.name }));
   return (
     <>

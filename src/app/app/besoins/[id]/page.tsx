@@ -1,6 +1,7 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { getScoped } from "@/server/data";
 import { getTimeline, getAttachments } from "@/server/entity";
 import { getLookups, forChurch } from "@/server/lookups";
@@ -17,10 +18,11 @@ import type { FundingRequest } from "@/lib/types";
 export default async function FundingDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "besoins")) return <NoAccess />;
   const f = await getScoped<FundingRequest>(ctx, "funding_requests", id);
   if (!f) notFound();
   const [lk, timeline, atts] = await Promise.all([getLookups(f.churchId), getTimeline("funding_request", id), getAttachments("funding_request", id)]);
-  const manage = canManage(ctx, f.churchId);
+  const manage = canManage(ctx, f.churchId, "besoins");
   const transitions = allowedTransitions("funding_request", f.status).filter((t) => !["approved", "partially_approved"].includes(t.to));
   const approved = ["approved", "partially_approved"].includes(f.status);
   return (

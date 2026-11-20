@@ -31,7 +31,7 @@ export async function churchSetup(churches: Church[]): Promise<ChurchSetup[]> {
     const m = memberships[i]!;
     const s = {
       church,
-      treasurers: m.filter((x) => x.roles.includes("treasurer")).length,
+      treasurers: m.filter((x) => x.roles.includes("treasurer") || x.roles.includes("admin")).length,
       members: m.length,
       bankAccounts: accounts.filter((a) => a.churchId === church.$id).length,
       departments: deps.filter((d) => d.churchId === church.$id).length,

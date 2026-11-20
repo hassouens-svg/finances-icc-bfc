@@ -15,7 +15,7 @@ export async function saveBudgetAction(_: ActionResult | null, fd: FormData): Pr
   return run(async () => {
     const ctx = await requireContext();
     const d = z.object({ churchId: z.string().min(1), year: z.coerce.number().int().min(2020).max(2100), scope: z.enum(["category", "department"]), scopeId: z.string().min(1), planned: zCents("Le montant prévu", { allowZero: true }) }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "tresorerie");
     const lk = await getLookups(d.churchId);
     const name = (d.scope === "category" ? lk.categories : lk.departments).find((x) => x.$id === d.scopeId)?.name ?? null;
     const ex = (await adminList<Budget>("budgets", [Query.equal("churchId", d.churchId), Query.equal("year", d.year), Query.equal("scopeId", d.scopeId)]))[0];
@@ -33,7 +33,7 @@ export async function importStatementAction(_: ActionResult | null, fd: FormData
     const ctx = await requireContext();
     const churchId = String(fd.get("churchId"));
     const bankAccountId = String(fd.get("bankAccountId"));
-    assertManage(ctx, churchId);
+    assertManage(ctx, churchId, "tresorerie");
     const file = fd.get("file");
     if (!(file instanceof File) || !file.size) throw new UserError("Choisissez un fichier CSV.");
     if (file.size > 2 * 1024 * 1024) throw new UserError("Fichier trop volumineux (2 Mo max).");
@@ -54,7 +54,7 @@ export async function importStatementAction(_: ActionResult | null, fd: FormData
     }
     if (!parsed.length) throw new UserError("Aucune ligne reconnue. Format attendu : date ; libellé ; montant (ou débit ; crédit).");
     const batch = ID.unique();
-    const perms = await permsFor(churchId);
+    const perms = await permsFor(churchId, "tresorerie");
     await adminClient().db.createRows({ databaseId: DATABASE_ID, tableId: "bank_statement_lines", rows: parsed.map((p) => ({ $id: ID.unique(), $permissions: perms, churchId, bankAccountId, importBatchId: batch, ...p, createdBy: ctx.user.id, archived: false })) });
     await audit(ctx, churchId, "import", "bank_statement", batch, `Relevé importé : ${parsed.length} lignes`);
     revalidateApp();
@@ -67,7 +67,7 @@ export async function matchStatementLineAction(fd: FormData): Promise<ActionResu
     const ctx = await requireContext();
     const line = await adminGet<BankStatementLine>("bank_statement_lines", String(fd.get("id")));
     if (!line) throw new UserError("Ligne introuvable.");
-    assertManage(ctx, line.churchId);
+    assertManage(ctx, line.churchId, "tresorerie");
     const matchedType = String(fd.get("matchedType") || "") || null;
     const matchedId = String(fd.get("matchedId") || "") || null;
     await patch("bank_statement_lines", line.$id, { matchedType, matchedId });

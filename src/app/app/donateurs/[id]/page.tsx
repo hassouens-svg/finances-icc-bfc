@@ -22,7 +22,7 @@ export default async function DonorPage({ params }: { params: Promise<{ id: stri
   const d = await getScoped<Donor>(ctx, "donors", id);
   if (!d) notFound();
   const [lines, settings] = await Promise.all([listScoped<OfferingLine>(ctx, "offering_lines", [Query.equal("donorId", id), Query.orderDesc("date")], [d.churchId]), getSettings()]);
-  const manage = canManage(ctx, d.churchId);
+  const manage = canManage(ctx, d.churchId, "offrandes");
   const years = [...new Set(lines.map((l) => new Date(l.date).getUTCFullYear()))];
   const columns: Col[] = [{ key: "date", label: "Date", type: "date", mobileSecondary: true }, { key: "type", label: "Type", mobilePrimary: true }, { key: "method", label: "Moyen", type: "muted", mobileSecondary: true }, { key: "amount", label: "Montant", type: "money" }];
   return (

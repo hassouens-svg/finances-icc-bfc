@@ -75,13 +75,14 @@ export async function importOfferingsAction(input: { churchId: string; batchId: 
   return run(async () => {
     const ctx = await requireContext();
     const d = z.object({ churchId: z.string().min(1), batchId: z.string().min(8).max(36), fileName: z.string().max(200), rows: z.array(offeringRow).min(1).max(1000), updateTreasury: z.boolean() }).parse(input);
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "offrandes");
     const lk = await getLookups(d.churchId);
     const types = new Map(lk.donationTypes.filter((t) => t.churchId === REGION || t.churchId === d.churchId).map((t) => [t.$id, t.name]));
     if (d.rows.some((r) => !types.has(r.typeId))) throw new UserError("Type de don inconnu dans le fichier.");
     const defaultBank = lk.bankAccounts.find((b) => b.churchId === d.churchId)?.$id ?? null;
     if (d.updateTreasury && !defaultBank && d.rows.some((r) => !["cash", "cheque"].includes(r.method))) throw new UserError("Ajoutez un compte bancaire avant d'importer des dons par virement/carte dans la trésorerie.");
-    const perms = await permsFor(d.churchId);
+    const perms = await permsFor(d.churchId, "offrandes");
+    const movPerms = await permsFor(d.churchId, "tresorerie");
 
     // Donateurs : retrouvés par leur nom, sinon créés
     const donors = await adminList<Donor>("donors", [Query.equal("churchId", d.churchId), Query.select(["$id", "fullName"])]);
@@ -130,7 +131,7 @@ export async function importOfferingsAction(input: { churchId: string; batchId: 
       });
       await bulk("offering_lines", lines);
       if (d.updateTreasury) {
-        await writeMovs(d.churchId, perms, lines.flatMap((l) => movementsForOfferingLine({ $id: l.$id, date: l.date, amountCents: l.amountCents, method: l.method, bankAccountId: l.bankAccountId, donationTypeName: l.donationTypeName }, defaultBank)), ctx.user.id);
+        await writeMovs(d.churchId, movPerms, lines.flatMap((l) => movementsForOfferingLine({ $id: l.$id, date: l.date, amountCents: l.amountCents, method: l.method, bankAccountId: l.bankAccountId, donationTypeName: l.donationTypeName }, defaultBank)), ctx.user.id);
       }
       lineCount += lines.length;
       total += t.entered;
@@ -146,10 +147,11 @@ export async function importExpensesAction(input: { churchId: string; batchId: s
   return run(async () => {
     const ctx = await requireContext();
     const d = z.object({ churchId: z.string().min(1), batchId: z.string().min(8).max(36), fileName: z.string().max(200), rows: z.array(expenseRow).min(1).max(1000), updateTreasury: z.boolean() }).parse(input);
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "depenses");
     const church = await churchById(d.churchId);
     const lk = await getLookups(d.churchId);
-    const perms = await permsFor(d.churchId);
+    const perms = await permsFor(d.churchId, "depenses");
+    const movPerms = await permsFor(d.churchId, "tresorerie");
     const cats = new Map(lk.categories.filter((c) => c.churchId === REGION || c.churchId === d.churchId).map((c) => [norm(c.name), { id: c.$id, name: c.name }]));
     const fallback = cats.get("autres") ?? cats.get("achats") ?? [...cats.values()][0];
     let created = 0;
@@ -180,7 +182,7 @@ export async function importExpensesAction(input: { churchId: string; batchId: s
     await bulk("expenses", rows);
     if (d.updateTreasury) {
       if (!bank && rows.some((r) => r.paymentMethod !== "cash")) throw new UserError("Ajoutez un compte bancaire avant d'importer des dépenses dans la trésorerie.");
-      await writeMovs(d.churchId, perms, rows.flatMap((e) => movementsForPaidExpense({ $id: e.$id, date: e.date, paidAt: e.paidAt, amountCents: e.amountCents, paymentMethod: e.paymentMethod, bankAccountId: e.bankAccountId, title: e.title, categoryName: e.categoryName }, bank)), ctx.user.id);
+      await writeMovs(d.churchId, movPerms, rows.flatMap((e) => movementsForPaidExpense({ $id: e.$id, date: e.date, paidAt: e.paidAt, amountCents: e.amountCents, paymentMethod: e.paymentMethod, bankAccountId: e.bankAccountId, title: e.title, categoryName: e.categoryName }, bank)), ctx.user.id);
     }
     const total = rows.reduce((a, r) => a + r.amountCents, 0);
     await audit(ctx, d.churchId, "import", "import_expenses", d.batchId, `Import Excel « ${d.fileName} » : ${rows.length} dépenses, ${formatEuro(total)}${created ? `, ${created} catégorie(s) créée(s)` : ""}`);

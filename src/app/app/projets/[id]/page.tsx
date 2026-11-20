@@ -24,7 +24,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   const paid = expenses.filter((e) => e.status === "paid").reduce((a, e) => a + e.amountCents, 0);
   const committed = expenses.filter((e) => ["approved", "in_approval", "submitted"].includes(e.status)).reduce((a, e) => a + e.amountCents, 0);
   const ms: { label: string; done: boolean }[] = (() => { try { return JSON.parse(p.milestonesJson ?? "[]"); } catch { return []; } })();
-  const manage = canManage(ctx, p.churchId);
+  const manage = canManage(ctx, p.churchId, "depenses");
   const columns: Col[] = [{ key: "date", label: "Date", type: "date", mobileSecondary: true }, { key: "title", label: "Dépense", mobilePrimary: true }, { key: "category", label: "Catégorie", type: "muted" }, { key: "status", label: "Statut", type: "status", entity: "expense" }, { key: "amount", label: "Montant", type: "money" }];
   return (
     <>

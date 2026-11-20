@@ -61,6 +61,7 @@ export const NAV: NavGroup[] = [
   {
     label: "Aide & paramètres",
     items: [
+      { href: "/app/equipe", label: "Mon équipe", icon: Users },
       { href: "/app/guide", label: "Guide d'utilisation", icon: BookOpen },
       { href: "/app/import", label: "Importer (Excel)", icon: FileUp },
       { href: "/app/admin", label: "Administration", icon: Settings },

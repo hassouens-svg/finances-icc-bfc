@@ -1,6 +1,7 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { getScoped } from "@/server/data";
 import { getTimeline, getAttachments } from "@/server/entity";
 import { getLookups, forChurch } from "@/server/lookups";
@@ -19,13 +20,14 @@ import type { Expense, Reimbursement } from "@/lib/types";
 export default async function ReimbursementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "remboursements")) return <NoAccess />;
   const r = await getScoped<Reimbursement>(ctx, "reimbursements", id);
   if (!r) notFound();
   const [lk, timeline, atts, expense] = await Promise.all([
     getLookups(r.churchId), getTimeline("reimbursement", id), getAttachments("reimbursement", id),
     r.expenseId ? getScoped<Expense>(ctx, "expenses", r.expenseId) : Promise.resolve(null),
   ]);
-  const manage = canManage(ctx, r.churchId);
+  const manage = canManage(ctx, r.churchId, "remboursements");
   let bank: string | null = null;
   try { bank = r.payeeBankInfo ? mask(decrypt(r.payeeBankInfo)) : null; } catch { bank = "••••"; }
   const transitions = allowedTransitions("reimbursement", r.status).filter((t) => t.to !== "approved");

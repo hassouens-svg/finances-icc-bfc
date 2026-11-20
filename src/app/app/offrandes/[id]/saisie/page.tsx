@@ -15,7 +15,7 @@ export default async function EntryPage({ params }: { params: Promise<{ id: stri
   const ctx = await requireContext();
   const s = await getScoped<OfferingSession>(ctx, "offering_sessions", id);
   if (!s) notFound();
-  if (s.status !== "draft" || !canManage(ctx, s.churchId)) redirect(`/app/offrandes/${id}`);
+  if (s.status !== "draft" || !canManage(ctx, s.churchId, "offrandes")) redirect(`/app/offrandes/${id}`);
   const [data, lines] = await Promise.all([entryData(ctx, s.churchId), listScoped<OfferingLine>(ctx, "offering_lines", [Query.equal("sessionId", id), Query.orderDesc("$createdAt")], [s.churchId])]);
   return (
     <>

@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil, Send } from "lucide-react";
-import { requireContext, canManage, churchName } from "@/server/context";
+import { requireContext, canManage, churchName, canSeeModule } from "@/server/context";
 import { getScoped } from "@/server/data";
 import { getTimeline, getAttachments } from "@/server/entity";
 import { getLookups } from "@/server/lookups";
@@ -21,10 +22,11 @@ import type { CrRequest } from "@/lib/types";
 export default async function CrDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "citeroyale")) return <NoAccess />;
   const c = await getScoped<CrRequest>(ctx, "cr_requests", id);
   if (!c) notFound();
   const [lk, timeline, atts] = await Promise.all([getLookups(c.churchId), getTimeline("cr_request", id), getAttachments("cr_request", id)]);
-  const manage = canManage(ctx, c.churchId);
+  const manage = canManage(ctx, c.churchId, "citeroyale");
   const transitions = allowedTransitions("cr_request", c.status).filter((t) => c.status !== "draft");
   const canAct = c.status === "mother_review" ? ctx.isRegional : manage;
   const gap = c.receivedCents != null && c.estimatedCents ? c.receivedCents - c.estimatedCents : null;

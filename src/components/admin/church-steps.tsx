@@ -2,7 +2,8 @@ import Link from "next/link";
 import { CheckCircle2, Circle, ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
 import { ActionButton } from "@/components/action-form";
-import { InviteDialog, BankAccountDialog } from "@/components/admin/forms";
+import { BankAccountDialog } from "@/components/admin/forms";
+import { CreateAccountDialog } from "@/components/admin/access";
 import { quickPublicLinkAction, defaultDepartmentsAction } from "@/server/actions/admin";
 import type { ChurchSetup } from "@/server/setup";
 import { cn } from "@/lib/utils";
@@ -31,8 +32,8 @@ export function ChurchSteps({ s, canInvite }: { s: ChurchSetup; canInvite: boole
       <CardBody>
         <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(s.done / s.total) * 100}%` }} /></div>
         <ol className="divide-y divide-border">
-          <Step done={s.treasurers > 0} title="1. Créer le compte du trésorier" text="Il pourra saisir offrandes, dépenses et dépôts. Ajoutez aussi pasteur et lecteurs si besoin.">
-            {canInvite && <InviteDialog churches={[{ value: c.$id, label: c.name }]} defaultChurchId={c.$id} canMother={false} />}
+          <Step done={s.treasurers > 0} title="1. Créer les accès de l'équipe" text="Responsable, trésorier, pasteur… ou droits personnalisés module par module.">
+            {canInvite && <CreateAccountDialog churches={[{ value: c.$id, label: c.name }]} defaultChurchId={c.$id} />}
           </Step>
           <Step done={s.bankAccounts > 0} title="2. Ajouter le compte bancaire" text="Avec le solde de départ : la trésorerie sera juste dès le premier jour.">
             <BankAccountDialog churchId={c.$id} />

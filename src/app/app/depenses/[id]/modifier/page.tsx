@@ -11,7 +11,7 @@ export default async function EditExpense({ params }: { params: Promise<{ id: st
   const ctx = await requireContext();
   const e = await getScoped<Expense>(ctx, "expenses", id);
   if (!e) notFound();
-  if (!canManage(ctx, e.churchId) || !["draft", "rejected", "in_approval"].includes(e.status)) redirect(`/app/depenses/${id}`);
+  if (!canManage(ctx, e.churchId, "depenses") || !["draft", "rejected", "in_approval"].includes(e.status)) redirect(`/app/depenses/${id}`);
   const data = await expenseFormData(ctx, e.churchId);
   return (
     <>

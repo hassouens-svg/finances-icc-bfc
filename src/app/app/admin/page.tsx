@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Building2, Users, Network, ListChecks, Landmark, GitBranch, Link2, Bell, ScrollText, Download, ChevronRight } from "lucide-react";
-import { requireContext } from "@/server/context";
+import { requireContext, canManage, canManageTeam } from "@/server/context";
 import { PageHeader } from "@/components/ui/page-header";
 
 export const metadata = { title: "Administration" };
@@ -9,7 +9,8 @@ export default async function AdminHome() {
   const ctx = await requireContext();
   const tiles = [
     { href: "/app/admin/eglises", icon: Building2, title: "Villes & églises", desc: "Créer les églises, désigner l'église mère", regional: true },
-    { href: "/app/admin/utilisateurs", icon: Users, title: "Utilisateurs", desc: "Invitations et rôles par église", regional: true },
+    { href: "/app/admin/utilisateurs", icon: Users, title: "Utilisateurs", desc: "Tous les comptes et leurs droits", regional: true },
+    { href: "/app/equipe", icon: Users, title: "Mon équipe", desc: "Comptes de l'église et droits de chacun", team: true },
     { href: "/app/admin/departements", icon: Network, title: "Départements", desc: "Louange, accueil, jeunesse… et budgets" },
     { href: "/app/admin/listes", icon: ListChecks, title: "Listes configurables", desc: "Catégories, types de dons, cultes, types de demandes" },
     { href: "/app/admin/comptes", icon: Landmark, title: "Comptes bancaires", desc: "Plusieurs comptes possibles par église" },
@@ -18,7 +19,7 @@ export default async function AdminHome() {
     { href: "/app/admin/parametres", icon: Bell, title: "Alertes & paramètres", desc: "Seuils de caisse, délais, reçus fiscaux", regional: true },
     { href: "/app/admin/audit", icon: ScrollText, title: "Journal d'audit", desc: "Qui a fait quoi, quand" },
     { href: "/app/rapports", icon: Download, title: "Export & sauvegarde", desc: "Export complet Excel d'une église" },
-  ].filter((t) => !t.regional || ctx.isRegional);
+  ].filter((t) => (t as { regional?: boolean }).regional ? ctx.isRegional : (t as { team?: boolean }).team ? ctx.isRegional || ctx.churches.some((c) => canManageTeam(ctx, c.$id)) : ctx.isRegional || ctx.churches.some((c) => canManage(ctx, c.$id, "parametres")));
   return (
     <>
       <PageHeader title="Administration" description="Tout est configurable : rien n'est figé dans l'application." />

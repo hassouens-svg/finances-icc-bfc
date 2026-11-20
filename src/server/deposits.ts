@@ -8,7 +8,7 @@ import type { Deposit, OfferingLine, OfferingSession } from "@/lib/types";
 
 export async function writeMovements(churchId: string, movs: Movement[], createdBy: string) {
   if (!movs.length) return;
-  const perms = await permsFor(churchId);
+  const perms = await permsFor(churchId, "tresorerie");
   await adminClient().db.createRows({
     databaseId: DATABASE_ID, tableId: "cash_movements",
     rows: movs.map((m) => ({ $id: ID.unique(), $permissions: perms, churchId, ...m, sourceId: m.sourceId ?? null, category: m.category ?? null, label: m.label ?? null, createdBy, archived: false })),

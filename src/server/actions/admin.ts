@@ -2,7 +2,8 @@
 import { z } from "zod";
 import { ID, Query, AppwriteException } from "node-appwrite";
 import { adminClient, DATABASE_ID } from "@/lib/appwrite/server";
-import { requireContext, assertRegional, assertManage, ForbiddenError } from "../context";
+import { requireContext, assertRegional, assertManage, assertTeam, ForbiddenError } from "../context";
+import { grantAccount, rolesFromForm, setMembership } from "../team";
 import { run, UserError, formToObject } from "../action";
 import { insert, patch, audit, permsFor, adminGet, adminList, regionPermissions, revalidateApp } from "../data";
 import { issuePasswordToken, randomToken } from "../tokens";
@@ -98,7 +99,21 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
     if (logo instanceof File && logo.size > 0) await patch("churches", id, { logoFileId: await saveLogo(logo) });
     await audit(ctx, id, "create", "church", id, `Église créée : ${d.name}`, null, d);
     revalidateApp();
-    return { ok: true, message: `Église « ${d.name} » créée.`, redirect: `/app/admin/eglises/${id}` };
+    // Accès de l'église créé en même temps (responsable de l'église ; pour l'église mère : aussi admin de la région)
+    const raw = formToObject(fd);
+    const accessEmail = String(raw.accessEmail ?? "").trim().toLowerCase();
+    if (accessEmail) {
+      const acc = z.object({ accessEmail: zEmail(), accessName: zText("Le nom du responsable", 160), accessPassword: z.union([z.literal(""), z.string().min(10, "Le mot de passe doit faire 10 caractères minimum.")]).optional() }).parse(raw);
+      const church = { $id: id, name: d.name, teamId } as Church;
+      const r = await grantAccount({ email: acc.accessEmail.toLowerCase(), name: acc.accessName, password: acc.accessPassword || null, church, churchRoles: ["admin"], motherAdmin: d.isMother });
+      await audit(ctx, id, "invite", "user", r.userId, `Accès de l'église créé : ${acc.accessEmail}${d.isMother ? " (responsable + admin église mère)" : " (responsable)"}`);
+    }
+    revalidateApp();
+    return {
+      ok: true,
+      message: accessEmail ? `Église « ${d.name} » et son accès créés.` : `Église « ${d.name} » créée.`,
+      redirect: `/app/admin/eglises/${id}`,
+    };
   });
 }
 
@@ -130,92 +145,60 @@ export async function toggleChurchActiveAction(fd: FormData): Promise<ActionResu
 const inviteSchema = z.object({
   email: zEmail().transform((v) => v.toLowerCase()),
   name: zText("Le nom", 160),
-  churchId: z.string().min(1, "Choisissez une église."),
-  roles: z.array(z.enum(["treasurer", "pastor", "reader", "mother_admin", "superadmin"])).min(1, "Choisissez au moins un rôle."),
+  churchId: z.string().optional(),
   password: z.union([z.literal(""), z.string().min(10, "Le mot de passe doit faire 10 caractères minimum.")]).optional(),
 });
 
+/** Création d'un compte avec ses droits. Le responsable d'une église crée l'équipe de son église. */
 export async function inviteUserAction(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const ctx = await requireContext();
     const raw = formToObject(fd);
-    const d = inviteSchema.parse({ ...raw, roles: raw.roles ?? [], churchId: raw.churchId || (Array.isArray(raw.roles) && (raw.roles as string[]).some((r) => r === "superadmin" || r === "mother_admin") ? "-" : "") });
-    const wantsMother = d.roles.includes("mother_admin");
-    const wantsSuper = d.roles.includes("superadmin");
-    if (wantsSuper && !ctx.isSuperAdmin) throw new ForbiddenError("Seul un super administrateur peut en créer un autre.");
-    if (wantsMother) assertRegional(ctx);
-    if (!ctx.isRegional) throw new ForbiddenError("Seule l'église mère peut inviter des utilisateurs.");
-    const church = ctx.allChurches.find((c) => c.$id === d.churchId);
-    if (!church && !wantsMother && !wantsSuper) throw new UserError("Église introuvable.");
-
-    const { users, teams } = adminClient();
-    const existing = (await users.list({ queries: [Query.equal("email", d.email), Query.limit(1)] })).users[0];
-    let userId = existing?.$id;
-    let isNew = false;
-    if (!userId) {
-      const u = await users.create({ userId: ID.unique(), email: d.email, password: d.password || randomToken(24) + "aA1!", name: d.name });
-      userId = u.$id;
-      isNew = true;
-    } else if (d.password) {
-      await users.updatePassword({ userId, password: d.password });
-    }
-    if (d.password) await users.updateEmailVerification({ userId, emailVerification: true });
-    if (wantsSuper) {
-      const u = await users.get({ userId });
-      await users.updateLabels({ userId, labels: [...new Set([...(u.labels ?? []), "superadmin"])] });
-    }
-    const churchRoles = d.roles.filter((r) => r !== "mother_admin" && r !== "superadmin");
-    if (church && churchRoles.length) await upsertMembership(church.teamId, userId, churchRoles);
-    if (wantsMother) await upsertMembership(MOTHER_TEAM_ID, userId, ["admin"]);
-
-    let link: string | null = null;
-    if (isNew && !d.password) {
-      link = await issuePasswordToken(userId, "invite");
-      await sendEmail({
-        to: d.email,
-        subject: "Votre accès à ICC BFC Finances",
-        html: emailLayout(
-          "Vous êtes invité(e) sur ICC BFC Finances",
-          `<p>Bonjour ${d.name},</p><p>Un accès a été créé pour vous${church ? ` pour l'église <b>${church.name}</b>` : ""}. Cliquez sur le bouton pour choisir votre mot de passe (lien valable 7 jours).</p>`,
-          { label: "Activer mon compte", url: link },
-        ),
-      });
-    }
-    await audit(ctx, church?.$id ?? REGION, "invite", "user", userId, `Invitation de ${d.email} (${d.roles.join(", ")})`, null, { email: d.email, roles: d.roles });
+    const d = inviteSchema.parse(raw);
+    const motherAdmin = raw.motherAdmin === "on";
+    const superAdmin = raw.superAdmin === "on";
+    if (superAdmin && !ctx.isSuperAdmin) throw new ForbiddenError("Seul un super administrateur peut en créer un autre.");
+    if (motherAdmin) assertRegional(ctx);
+    const church = d.churchId ? ctx.allChurches.find((c) => c.$id === d.churchId) ?? null : null;
+    const churchRoles = church ? rolesFromForm(raw) : [];
+    if (church) assertTeam(ctx, church.$id);
+    else if (!motherAdmin && !superAdmin) throw new UserError("Choisissez une église.");
+    if (church && !churchRoles.length && !motherAdmin && !superAdmin) throw new UserError("Choisissez les droits de la personne.");
+    const r = await grantAccount({ email: d.email, name: d.name, password: d.password || null, church, churchRoles, motherAdmin, superAdmin });
+    await audit(ctx, church?.$id ?? REGION, "invite", "user", r.userId, `Compte ${d.email} : ${[...churchRoles, motherAdmin ? "admin église mère" : "", superAdmin ? "super admin" : ""].filter(Boolean).join(", ")}`);
     revalidateApp();
     return {
       ok: true,
-      message: d.password ? "Compte créé : la personne peut se connecter avec ce mot de passe." : isNew ? "Invitation créée." : "Rôles ajoutés à l'utilisateur existant.",
-      data: link ? { link } : undefined,
+      message: d.password ? "Compte créé : la personne peut se connecter avec ce mot de passe." : r.isNew ? "Compte créé : envoyez-lui le lien d'invitation." : "Accès ajoutés à la personne (compte existant).",
+      data: r.link ? { link: r.link } : undefined,
     };
   });
 }
 
-async function upsertMembership(teamId: string, userId: string, roles: string[]) {
-  const { teams } = adminClient();
-  const list = await teams.listMemberships({ teamId, queries: [Query.equal("userId", userId), Query.limit(1)] });
-  const m = list.memberships[0];
-  if (m) await teams.updateMembership({ teamId, membershipId: m.$id, roles: [...new Set([...m.roles, ...roles])] });
-  else await teams.createMembership({ teamId, roles, userId });
-}
-
+/** Modifie les droits d'un membre dans une église (ou retire son accès). */
 export async function updateMemberRolesAction(_: ActionResult | null, fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const ctx = await requireContext();
-    assertRegional(ctx);
     const raw = formToObject(fd);
-    const d = z.object({ teamId: z.string(), membershipId: z.string(), roles: z.array(z.string()).default([]) }).parse({ ...raw, roles: raw.roles ?? [] });
+    const d = z.object({ teamId: z.string(), userId: z.string() }).parse(raw);
     const { teams } = adminClient();
-    if (!d.roles.length) {
-      await teams.deleteMembership({ teamId: d.teamId, membershipId: d.membershipId });
-      await audit(ctx, REGION, "update", "membership", d.membershipId, `Accès retiré (${d.teamId})`);
+    if (d.teamId === MOTHER_TEAM_ID) {
+      assertRegional(ctx);
+      await setMembership(MOTHER_TEAM_ID, d.userId, raw.motherAdmin === "on" ? ["admin"] : []);
+      await audit(ctx, REGION, "update", "membership", d.userId, raw.motherAdmin === "on" ? "Accès église mère accordé" : "Accès église mère retiré");
       revalidateApp();
-      return { ok: true, message: "Accès retiré." };
+      return { ok: true, message: "Accès église mère mis à jour." };
     }
-    await teams.updateMembership({ teamId: d.teamId, membershipId: d.membershipId, roles: d.roles });
-    await audit(ctx, REGION, "update", "membership", d.membershipId, `Rôles modifiés (${d.teamId}) : ${d.roles.join(", ")}`);
+    const church = ctx.allChurches.find((c) => c.teamId === d.teamId);
+    if (!church) throw new UserError("Église introuvable.");
+    assertTeam(ctx, church.$id);
+    if (d.userId === ctx.user.id && !ctx.isRegional) throw new UserError("Vous ne pouvez pas modifier vos propres droits : demandez à l'église mère.");
+    const roles = rolesFromForm(raw);
+    await setMembership(d.teamId, d.userId, roles);
+    void teams;
+    await audit(ctx, church.$id, "update", "membership", d.userId, roles.length ? `Droits modifiés : ${roles.join(", ")}` : "Accès retiré");
     revalidateApp();
-    return { ok: true, message: "Rôles mis à jour." };
+    return { ok: true, message: roles.length ? "Droits mis à jour." : "Accès retiré." };
   });
 }
 
@@ -239,8 +222,11 @@ export async function toggleUserAction(fd: FormData): Promise<ActionResult> {
 export async function resendInviteAction(fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const ctx = await requireContext();
-    assertRegional(ctx);
     const userId = String(fd.get("userId"));
+    if (!ctx.isRegional) {
+      const ms = (await adminClient().users.listMemberships({ userId })).memberships;
+      if (!ms.some((m) => ctx.allChurches.some((c) => c.teamId === m.teamId && ctx.access[c.$id]?.admin))) throw new ForbiddenError();
+    }
     const { users } = adminClient();
     const u = await users.get({ userId });
     const link = await issuePasswordToken(userId, "invite");
@@ -257,7 +243,7 @@ export async function saveDepartmentAction(_: ActionResult | null, fd: FormData)
       id: zId(), churchId: z.string().min(1), name: zText("Le nom", 120), leaderName: zOptText(160),
       leaderEmail: z.union([z.literal(""), zEmail()]).optional().transform((v) => v || null), annualBudget: zOptCents(),
     }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "parametres");
     const data = { name: d.name, leaderName: d.leaderName, leaderEmail: d.leaderEmail, annualBudgetCents: d.annualBudget };
     if (d.id) {
       const before = await adminGet<{ $id: string; $createdAt: string; $updatedAt: string; churchId: string }>("departments", d.id);
@@ -282,7 +268,7 @@ export async function archiveRowAction(fd: FormData): Promise<ActionResult> {
     const row = await adminGet<{ $id: string; $createdAt: string; $updatedAt: string; churchId: string; archived: boolean; name?: string; label?: string }>(table, id);
     if (!row) throw new UserError("Élément introuvable.");
     if (row.churchId === REGION) assertRegional(ctx);
-    else assertManage(ctx, row.churchId);
+    else assertManage(ctx, row.churchId, "parametres");
     await patch(table, id, { archived: !row.archived });
     await audit(ctx, row.churchId, row.archived ? "restore" : "archive", table, id, `${row.archived ? "Restauration" : "Archivage"} : ${row.name ?? row.label ?? id}`);
     revalidateApp();
@@ -300,7 +286,7 @@ export async function saveListItemAction(_: ActionResult | null, fd: FormData): 
     }).parse(formToObject(fd));
     if (d.churchId === REGION) assertRegional(ctx);
     else {
-      assertManage(ctx, d.churchId);
+      assertManage(ctx, d.churchId, "parametres");
       const church = ctx.allChurches.find((c) => c.$id === d.churchId);
       if (!ctx.isRegional && !church?.allowLocalLists) throw new ForbiddenError("L'église mère n'autorise pas les listes locales pour cette église.");
     }
@@ -322,7 +308,7 @@ export async function saveBankAccountAction(_: ActionResult | null, fd: FormData
       ibanLast4: z.string().trim().regex(/^(\d{4})?$/, "Indiquez seulement les 4 derniers chiffres.").optional(),
       openingBalance: zOptCents(), openingDate: zDate("La date d'ouverture"),
     }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "parametres");
     const data = { label: d.label, bankName: d.bankName, ibanMasked: d.ibanLast4 ? `•••• ${d.ibanLast4}` : null, openingBalanceCents: d.openingBalance ?? 0, openingDate: d.openingDate };
     if (d.id) await patch("bank_accounts", d.id, data);
     else await insert("bank_accounts", d.churchId, { ...data, createdBy: ctx.user.id });
@@ -349,7 +335,7 @@ export async function saveWorkflowAction(_: ActionResult | null, fd: FormData): 
       name: d.name, minCents: d.min ?? 0, maxCents: d.max, stepRoles: d.stepRoles, stepDelaysHours: d.stepRoles.map((_, i) => d.stepDelays[i] ?? 72),
       categoryIds: d.categoryIds.filter(Boolean), priority: d.priority, active: true,
     };
-    const perms = d.churchId === REGION ? regionPermissions() : await permsFor(d.churchId);
+    const perms = d.churchId === REGION ? regionPermissions() : await permsFor(d.churchId, "base");
     if (d.id) await patch("approval_workflows", d.id, data);
     else await insert("approval_workflows", d.churchId, { ...data, createdBy: ctx.user.id }, { permissions: perms });
     await audit(ctx, d.churchId, d.id ? "update" : "create", "workflow", d.id, `Workflow : ${d.name}`, null, data);
@@ -366,7 +352,7 @@ export async function createPublicLinkAction(_: ActionResult | null, fd: FormDat
       churchId: z.string().min(1), kind: z.enum(["funding", "reimbursement"]), departmentId: zId(), label: zOptText(160),
       expiresAt: z.string().optional().transform((v) => (v ? new Date(`${v}T23:59:59Z`).toISOString() : null)),
     }).parse(formToObject(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "parametres");
     const row = await insert("public_links", d.churchId, { ...d, token: randomToken(18), active: true, createdBy: ctx.user.id });
     await audit(ctx, d.churchId, "create", "public_link", row.$id, `Lien public créé (${d.kind})`);
     revalidateApp();
@@ -380,7 +366,7 @@ export async function togglePublicLinkAction(fd: FormData): Promise<ActionResult
     const id = String(fd.get("id"));
     const row = await adminGet<{ $id: string; $createdAt: string; $updatedAt: string; churchId: string; active: boolean }>("public_links", id);
     if (!row) throw new UserError("Lien introuvable.");
-    assertManage(ctx, row.churchId);
+    assertManage(ctx, row.churchId, "parametres");
     await patch("public_links", id, { active: !row.active });
     await audit(ctx, row.churchId, "update", "public_link", id, row.active ? "Lien désactivé" : "Lien activé");
     revalidateApp();
@@ -442,7 +428,7 @@ export async function quickPublicLinkAction(fd: FormData): Promise<ActionResult>
     const ctx = await requireContext();
     const churchId = String(fd.get("churchId"));
     const kind = z.enum(["funding", "reimbursement"]).parse(fd.get("kind"));
-    assertManage(ctx, churchId);
+    assertManage(ctx, churchId, "parametres");
     const existing = await adminList<{ $id: string; $createdAt: string; $updatedAt: string; active: boolean; departmentId?: string | null }>("public_links", [Query.equal("churchId", churchId), Query.equal("kind", kind)]);
     const general = existing.find((l) => !l.departmentId);
     if (general) {
@@ -461,7 +447,7 @@ export async function defaultDepartmentsAction(fd: FormData): Promise<ActionResu
   return run(async () => {
     const ctx = await requireContext();
     const churchId = String(fd.get("churchId"));
-    assertManage(ctx, churchId);
+    assertManage(ctx, churchId, "parametres");
     const names = ["Louange", "Accueil", "Jeunesse", "Enfants", "Médias", "Intercession", "Évangélisation", "Protocole", "Social"];
     const existing = new Set((await adminList<{ $id: string; $createdAt: string; $updatedAt: string; name: string }>("departments", [Query.equal("churchId", churchId)])).map((d) => d.name.toLowerCase()));
     let n = 0;

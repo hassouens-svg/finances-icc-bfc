@@ -10,7 +10,7 @@ export async function lockMonthAction(fd: FormData): Promise<ActionResult> {
   return run(async () => {
     const ctx = await requireContext();
     const d = z.object({ churchId: z.string(), month: z.string().regex(/^\d{4}-\d{2}$/) }).parse(Object.fromEntries(fd));
-    assertManage(ctx, d.churchId);
+    assertManage(ctx, d.churchId, "tresorerie");
     const ex = await adminList("period_locks", [Query.equal("churchId", d.churchId), Query.equal("month", d.month)]);
     if (ex.length) throw new UserError("Ce mois est déjà clôturé.");
     await insert("period_locks", d.churchId, { month: d.month, lockedByName: ctx.user.name, createdBy: ctx.user.id });

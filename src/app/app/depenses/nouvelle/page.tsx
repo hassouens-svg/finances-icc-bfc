@@ -1,5 +1,6 @@
+import { NoAccess } from "@/components/no-access";
 import { Receipt } from "lucide-react";
-import { requireContext } from "@/server/context";
+import { requireContext, canSeeModule } from "@/server/context";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExpenseForm } from "@/components/expenses/expense-form";
@@ -9,6 +10,7 @@ export const metadata = { title: "Nouvelle dépense" };
 
 export default async function NewExpense({ searchParams }: { searchParams: Promise<{ project?: string }> }) {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "depenses")) return <NoAccess />;
   const data = await expenseFormData(ctx);
   if (!data.churches.length) return <EmptyState icon={<Receipt />} title="Vous n'avez pas les droits de saisie" />;
   return (

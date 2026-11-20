@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { Lightbulb, Link2 } from "lucide-react";
 import { Query } from "node-appwrite";
-import { requireContext, churchName, canManage } from "@/server/context";
+import { requireContext, churchName, canManage, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { lookupsFor } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/page-header";
@@ -20,6 +21,7 @@ export const metadata = { title: "Besoins des départements" };
 
 export default async function FundingPage() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "besoins")) return <NoAccess />;
   const year = new Date().getUTCFullYear();
   const [items, lk, spent] = await Promise.all([
     listScoped<FundingRequest>(ctx, "funding_requests", [Query.orderDesc("$createdAt")]),

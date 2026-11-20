@@ -19,7 +19,7 @@ export const metadata = { title: "Liens publics" };
 
 export default async function LinksPage({ searchParams }: { searchParams: Promise<{ church?: string }> }) {
   const ctx = await requireContext();
-  const { church, allowed } = pickChurch(ctx, (await searchParams).church);
+  const { church, allowed } = pickChurch(ctx, (await searchParams).church, true, "parametres");
   if (!church) return <EmptyState icon={<Link2 />} title="Aucune église gérable" />;
   const [links, deps] = await Promise.all([
     adminList<PublicLink>("public_links", [Query.equal("churchId", church.$id), Query.orderDesc("$createdAt")]),

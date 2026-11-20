@@ -1,7 +1,8 @@
+import { NoAccess } from "@/components/no-access";
 import Link from "next/link";
 import { RotateCcw, Link2 } from "lucide-react";
 import { Query } from "node-appwrite";
-import { requireContext, churchName, canManage } from "@/server/context";
+import { requireContext, churchName, canManage, canSeeModule } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { PageHeader } from "@/components/ui/page-header";
 import { PublicLinksPanel } from "@/components/public-links-panel";
@@ -18,6 +19,7 @@ export const metadata = { title: "Remboursements" };
 
 export default async function ReimbursementsPage() {
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "remboursements")) return <NoAccess />;
   const items = await listScoped<Reimbursement>(ctx, "reimbursements", [Query.orderDesc("$createdAt")]);
   const s = (st: string[]) => items.filter((i) => st.includes(i.status));
   const columns: Col[] = [
@@ -30,7 +32,7 @@ export default async function ReimbursementsPage() {
     { key: "amount", label: "Montant", type: "money" },
   ];
   const rows = items.map((r) => ({ id: r.$id, href: `/app/remboursements/${r.$id}`, date: r.$createdAt, requester: r.requesterName, church: churchName(ctx, r.churchId), reason: (r.reason ?? "").slice(0, 60), reference: r.reference, status: r.status, amount: r.amountCents }));
-  const canLinks = ctx.scopeIds.some((id) => canManage(ctx, id));
+  const canLinks = ctx.scopeIds.some((id) => canManage(ctx, id, "remboursements"));
   return (
     <>
       <PageHeader module={3} help="remboursements" title="Remboursements" description="Demandes envoyées via le lien public, avec justificatif photo." />

@@ -1,5 +1,6 @@
+import { NoAccess } from "@/components/no-access";
 import { FileSpreadsheet, FileText, FileBarChart } from "lucide-react";
-import { requireContext } from "@/server/context";
+import { requireContext, canSeeModule } from "@/server/context";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const LIST = [
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<PeriodParams> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
+  if (!canSeeModule(ctx, "tresorerie")) return <NoAccess />;
   const q = (r: string, f: string) => `/api/export?report=${r}&format=${f}&p=${sp.p ?? "month"}${sp.from ? `&from=${sp.from}&to=${sp.to}` : ""}`;
   const items = [...LIST, ...(ctx.isRegional ? [["regional", "Rapport consolidé régional", "Toutes les églises : entrées, sorties, trésorerie"] as const] : []), ["full", "Export complet (sauvegarde)", "Toutes les données de la vue courante, toutes périodes (Excel)"] as const];
   return (
