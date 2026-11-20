@@ -19,7 +19,9 @@ test("super admin : crée une église avec logo ; église mère : crée un compt
   await page.getByRole("button", { name: "Nouvelle église" }).click();
   const dlg = page.getByRole("dialog");
   await dlg.getByLabel("Nom de l'église").fill(`ICC Test ${stamp}`);
-  await dlg.locator("select[name=cityId]").selectOption({ index: 1 });
+  await dlg.getByLabel("Ville").fill(`Testville ${stamp}`);
+  await expect(dlg.getByText("Nouvelle ville : elle sera créée automatiquement.")).toBeVisible();
+  await expect(dlg.getByLabel("Préfixe des références")).toHaveValue("TES");
   await dlg.getByLabel("Préfixe des références").fill("TST");
   await dlg.locator("input[name=logo]").setInputFiles(logo);
   await dlg.getByRole("button", { name: "Enregistrer" }).click();
@@ -27,6 +29,12 @@ test("super admin : crée une église avec logo ; église mère : crée un compt
   await expect(page.getByRole("heading", { name: new RegExp(`ICC Test ${stamp}`) })).toBeVisible();
   const logoSrc = await page.locator("h1 img").getAttribute("src");
   expect((await page.request.get(logoSrc!)).status()).toBe(200);
+  // prochaines étapes en un clic
+  await expect(page.getByText("Prochaines étapes")).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter les départements courants" }).click();
+  await toast(page, /départements ajoutés/);
+  await page.getByRole("button", { name: "Lien besoins" }).click();
+  await toast(page, /Lien prêt/);
 
   // l'église mère crée le compte du trésorier de la nouvelle église, avec un mot de passe
   await login(page, "mere@example.com");
@@ -57,4 +65,19 @@ test("seul un super administrateur voit l'option « Super administrateur »", as
   await page.goto("/app/admin/utilisateurs");
   await page.getByRole("button", { name: "Créer un compte" }).click();
   await expect(page.getByRole("dialog").getByText("Super administrateur", { exact: true })).toBeVisible();
+});
+
+test("le bouton « Copier le lien » copie vraiment le lien public", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await login(page, "tresorier.besancon@example.com");
+  await page.goto("/app/remboursements");
+  await expect(page.getByText("Lien à partager (remboursements)")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await page.getByRole("button", { name: "Copier le lien" }).first().click();
+  await expect(page.getByRole("button", { name: "Copié" }).first()).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toMatch(/\/p\/[\w-]{20,}$/);
+  // le lien copié ouvre bien le formulaire public
+  await page.goto(new URL(copied).pathname);
+  await expect(page.getByRole("heading", { name: "Demander un remboursement" })).toBeVisible();
 });

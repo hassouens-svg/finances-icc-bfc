@@ -12,6 +12,8 @@ import { toggleChurchActiveAction } from "@/server/actions/admin";
 import { ROLE_LABELS } from "@/lib/status";
 import { initials } from "@/lib/format";
 import { logoUrl } from "@/lib/logo";
+import { churchSetup } from "@/server/setup";
+import { ChurchSteps } from "@/components/admin/church-steps";
 
 export default async function ChurchDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +24,7 @@ export default async function ChurchDetail({ params }: { params: Promise<{ id: s
   const { teams } = adminClient();
   const members = (await teams.listMemberships({ teamId: c.teamId, queries: [Query.limit(100)] })).memberships;
   const city = ctx.cities.find((x) => x.$id === c.cityId);
+  const [setup] = await churchSetup([c]);
   return (
     <>
       <PageHeader
@@ -44,6 +47,7 @@ export default async function ChurchDetail({ params }: { params: Promise<{ id: s
           </>
         }
       />
+      <div className="mb-5"><ChurchSteps s={setup!} canInvite={ctx.isRegional} /></div>
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <CardHeader title="Équipe" description="Personnes ayant accès aux données de cette église." action={<InviteDialog churches={[{ value: c.$id, label: c.name }]} defaultChurchId={c.$id} canMother={false} />} />

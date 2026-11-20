@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
-import { Plus, Pencil, Copy, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { LinkBox } from "@/components/copy-button";
 import { FormDialog } from "@/components/form-dialog";
 import { Field, Input, Select, Checkbox } from "@/components/ui/input";
 import { AmountInput } from "@/components/ui/amount-input";
@@ -53,6 +53,35 @@ function LogoPicker({ current }: { current?: string | null }) {
   );
 }
 
+function suggestPrefix(text: string) {
+  const w = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\b(icc|impact|centre|chretien|eglise|de|du|la|le|sur)\b/gi, " ").replace(/[^a-zA-Z ]/g, " ").trim();
+  return (w.split(/\s+/)[0] ?? "").slice(0, 3).toUpperCase();
+}
+
+/** Nom, ville (tapée librement : créée automatiquement si nouvelle) et préfixe proposé automatiquement. */
+function ChurchNameCityPrefix({ church, cities }: { church?: { name: string; cityId?: string | null; refPrefix: string }; cities: Opt[] }) {
+  const [name, setName] = React.useState(church?.name ?? "");
+  const [city, setCity] = React.useState(cities.find((c) => c.value === church?.cityId)?.label ?? "");
+  const [prefix, setPrefix] = React.useState(church?.refPrefix ?? "");
+  const [touched, setTouched] = React.useState(!!church);
+  React.useEffect(() => { if (!touched) setPrefix(suggestPrefix(city || name)); }, [name, city, touched]);
+  const known = cities.some((c) => c.label.toLowerCase() === city.trim().toLowerCase());
+  return (
+    <>
+      <FieldErr name="name" label="Nom de l'église"><Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="ICC Besançon" required /></FieldErr>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FieldErr name="cityName" label="Ville" hint={city && !known ? "Nouvelle ville : elle sera créée automatiquement." : "Choisissez ou tapez le nom de la ville."}>
+          <Input id="cityName" name="cityName" list="cities-list" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Besançon" autoComplete="off" required />
+        </FieldErr>
+        <FieldErr name="refPrefix" label="Préfixe des références" hint="Proposé automatiquement (ex. BES-2026-0001)">
+          <Input id="refPrefix" name="refPrefix" value={prefix} onChange={(e) => { setTouched(true); setPrefix(e.target.value.toUpperCase()); }} maxLength={5} className="uppercase" required />
+        </FieldErr>
+      </div>
+      <datalist id="cities-list">{cities.map((c) => <option key={c.value} value={c.label} />)}</datalist>
+    </>
+  );
+}
+
 export function ChurchDialog({
   church, cities, isSuperAdmin,
 }: { church?: { id: string; name: string; cityId?: string | null; address?: string | null; pastorName?: string | null; refPrefix: string; isMother: boolean; allowLocalLists: boolean; logoUrl?: string | null }; cities: Opt[]; isSuperAdmin: boolean }) {
@@ -65,18 +94,7 @@ export function ChurchDialog({
       action={saveChurchAction}
     >
       {church && <input type="hidden" name="id" value={church.id} />}
-      <FieldErr name="name" label="Nom de l'église"><Input id="name" name="name" defaultValue={church?.name} placeholder="ICC Besançon" required /></FieldErr>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FieldErr name="cityId" label="Ville">
-          <Select id="cityId" name="cityId" defaultValue={church?.cityId ?? ""} required>
-            <option value="" disabled>Choisir…</option>
-            {cities.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </Select>
-        </FieldErr>
-        <FieldErr name="refPrefix" label="Préfixe des références" hint="2 à 5 lettres, ex. BES">
-          <Input id="refPrefix" name="refPrefix" defaultValue={church?.refPrefix} maxLength={5} className="uppercase" required />
-        </FieldErr>
-      </div>
+      <ChurchNameCityPrefix church={church} cities={cities} />
       <FieldErr name="address" label="Adresse" optional><Input id="address" name="address" defaultValue={church?.address ?? ""} /></FieldErr>
       <FieldErr name="pastorName" label="Pasteur / responsable" optional><Input id="pastorName" name="pastorName" defaultValue={church?.pastorName ?? ""} /></FieldErr>
       <LogoPicker current={church?.logoUrl} />
@@ -104,11 +122,8 @@ export function InviteDialog({ churches, defaultChurchId, canMother, canSuper = 
           {link ? (
             <div className="space-y-4">
               <p className="text-[14px]">Invitation créée. Si l&apos;email n&apos;arrive pas, envoyez ce lien (WhatsApp, SMS…) — il est valable 7 jours :</p>
-              <div className="break-all rounded-xl bg-surface p-3 font-mono text-[12px]">{link}</div>
-              <div className="flex gap-2">
-                <Button onClick={() => { navigator.clipboard.writeText(link); toast.success("Lien copié."); }}><Copy /> Copier le lien</Button>
-                <Button variant="secondary" onClick={() => setOpen(false)}>Fermer</Button>
-              </div>
+              <LinkBox url={link} title="Votre accès à ICC BFC Finances" text="Bonjour, voici le lien pour activer votre compte ICC BFC Finances :" />
+              <Button variant="secondary" onClick={() => setOpen(false)}>Fermer</Button>
             </div>
           ) : (
             <ActionForm action={inviteUserAction} onSuccess={(r: ActionResult) => { if (r.ok && r.data?.link) setLink(String(r.data.link)); else setOpen(false); }} className="space-y-4">

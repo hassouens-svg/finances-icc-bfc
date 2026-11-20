@@ -53,6 +53,14 @@ npm run seed            # ajoute les données si la base est vide
 npm run seed -- --reset # efface TOUT puis recrée la démo
 ```
 
+Repartir d'une base **toute neuve** (sans démo) :
+
+```bash
+npm run reset -- --confirm
+```
+
+Efface toutes les données, fichiers, équipes et comptes, **sauf les super administrateurs** (hors `@example.com`), puis recrée seulement les réglages par défaut (catégories, types de dons, cultes, circuits de validation, seuils d'alerte), modifiables ensuite.
+
 > `--reset` efface toutes les données et les comptes `@example.com`, mais **conserve les autres comptes** (votre super administrateur).
 > Les logos placés dans `public/brand/icc-<slug>.jpg` (ex. `icc-dijon.jpg`) sont chargés automatiquement.
 

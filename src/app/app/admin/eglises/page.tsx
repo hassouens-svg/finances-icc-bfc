@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ChurchDialog, CityDialog } from "@/components/admin/forms";
 import { logoUrl } from "@/lib/logo";
+import { churchSetup } from "@/server/setup";
 
 export const metadata = { title: "Villes & églises" };
 
@@ -14,16 +15,17 @@ export default async function ChurchesPage() {
   const ctx = await requireContext();
   assertRegional(ctx);
   const cities = ctx.cities.map((c) => ({ value: c.$id, label: c.name }));
+  const setups = await churchSetup(ctx.allChurches);
   return (
     <>
       <PageHeader
         back={{ href: "/app/admin", label: "Administration" }}
         title="Villes & églises"
         description="L'église mère pilote les églises filles. Chaque église ne voit que ses propres données."
-        actions={<><CityDialog />{cities.length > 0 && <ChurchDialog cities={cities} isSuperAdmin={ctx.isSuperAdmin} />}</>}
+        actions={<><CityDialog /><ChurchDialog cities={cities} isSuperAdmin={ctx.isSuperAdmin} /></>}
       />
       {ctx.cities.length === 0 ? (
-        <EmptyState icon={<MapPin />} title="Commencez par créer une ville" description="Ex. Dijon, puis Besançon, Chalon-sur-Saône, Auxerre…" action={<CityDialog />} />
+        <EmptyState icon={<MapPin />} title="Créez votre première église" description="Commencez par l'église mère (ex. ICC Dijon) avec son logo : la ville se crée en même temps." action={<ChurchDialog cities={cities} isSuperAdmin={ctx.isSuperAdmin} />} />
       ) : (
         <div className="space-y-6">
           {ctx.cities.map((city) => {
@@ -47,6 +49,7 @@ export default async function ChurchesPage() {
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2 text-[15px] font-medium">{c.name}{c.isMother && <Badge tone="progress" dot={false}>Église mère</Badge>}{!c.active && <Badge tone="neutral" dot={false}>Archivée</Badge>}</span>
                           <span className="block text-[13px] text-muted">Préfixe {c.refPrefix}{c.pastorName ? ` · ${c.pastorName}` : ""}</span>
+                          {(() => { const st = setups.find((x) => x.church.$id === c.$id); return st && st.done < st.total ? <span className="mt-1 inline-block rounded-full bg-warning-soft px-2 py-0.5 text-[12px] font-medium text-warning">Mise en place {st.done}/{st.total}</span> : <span className="mt-1 inline-block rounded-full bg-success-soft px-2 py-0.5 text-[12px] font-medium text-success">Prête</span>; })()}
                         </span>
                         <ChevronRight className="size-4 text-muted" />
                       </Link>

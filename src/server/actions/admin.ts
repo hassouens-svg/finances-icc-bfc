@@ -38,7 +38,7 @@ export async function saveCityAction(_: ActionResult | null, fd: FormData): Prom
 const churchSchema = z.object({
   id: zId(),
   name: zText("Le nom de l'église", 160),
-  cityId: zId(),
+  cityName: zText("La ville", 120),
   address: zOptText(400),
   pastorName: zOptText(160),
   refPrefix: z.string().trim().toUpperCase().regex(/^[A-Z]{2,5}$/, "Le préfixe doit faire 2 à 5 lettres (ex. BES)."),
@@ -54,6 +54,14 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
     if (d.isMother && !ctx.isSuperAdmin) throw new ForbiddenError("Seul le super administrateur peut désigner l'église mère.");
     const { db, teams } = adminClient();
     const mother = ctx.allChurches.find((c) => c.isMother);
+    // Ville : retrouvée par son nom, sinon créée automatiquement (une étape de moins)
+    let city = ctx.cities.find((c) => c.name.trim().toLowerCase() === d.cityName.trim().toLowerCase());
+    if (!city) {
+      const row = await db.createRow({ databaseId: DATABASE_ID, tableId: "cities", rowId: ID.unique(), data: { name: d.cityName.trim(), region: "Bourgogne-Franche-Comté" }, permissions: regionPermissions() });
+      city = row as unknown as typeof ctx.cities[number];
+      await audit(ctx, REGION, "create", "city", row.$id, `Ville créée : ${d.cityName}`);
+    }
+    const cityId = city.$id;
 
     if (d.id) {
       const before = await adminGet<Church>("churches", d.id);
@@ -61,7 +69,7 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
       const isMother = ctx.isSuperAdmin ? d.isMother : before.isMother;
       await db.updateRow({
         databaseId: DATABASE_ID, tableId: "churches", rowId: d.id,
-        data: { name: d.name, cityId: d.cityId, address: d.address, pastorName: d.pastorName, refPrefix: d.refPrefix, isMother, allowLocalLists: d.allowLocalLists, parentChurchId: isMother ? null : mother && mother.$id !== d.id ? mother.$id : before.parentChurchId },
+        data: { name: d.name, cityId, address: d.address, pastorName: d.pastorName, refPrefix: d.refPrefix, isMother, allowLocalLists: d.allowLocalLists, parentChurchId: isMother ? null : mother && mother.$id !== d.id ? mother.$id : before.parentChurchId },
       });
       if (isMother && !before.isMother) await setMotherFlags(d.id);
       const logo = fd.get("logo");
@@ -80,7 +88,7 @@ export async function saveChurchAction(_: ActionResult | null, fd: FormData): Pr
     await db.createRow({
       databaseId: DATABASE_ID, tableId: "churches", rowId: id,
       data: {
-        name: d.name, slug, cityId: d.cityId, address: d.address, pastorName: d.pastorName, refPrefix: d.refPrefix, isMother: d.isMother,
+        name: d.name, slug, cityId, address: d.address, pastorName: d.pastorName, refPrefix: d.refPrefix, isMother: d.isMother,
         parentChurchId: d.isMother ? null : mother?.$id ?? null, teamId, active: true, allowLocalLists: d.allowLocalLists,
       },
       permissions: regionPermissions(),
@@ -425,5 +433,41 @@ export async function toggleSuperAdminAction(fd: FormData): Promise<ActionResult
     await audit(ctx, REGION, "update", "user", userId, `${has ? "Retrait" : "Attribution"} du rôle super administrateur : ${u.email}`);
     revalidateApp();
     return { ok: true, message: has ? "Droits super administrateur retirés." : "Droits super administrateur accordés." };
+  });
+}
+
+/** Crée en un clic le lien public général (besoins ou remboursements) d'une église, s'il n'existe pas. */
+export async function quickPublicLinkAction(fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireContext();
+    const churchId = String(fd.get("churchId"));
+    const kind = z.enum(["funding", "reimbursement"]).parse(fd.get("kind"));
+    assertManage(ctx, churchId);
+    const existing = await adminList<{ $id: string; $createdAt: string; $updatedAt: string; active: boolean; departmentId?: string | null }>("public_links", [Query.equal("churchId", churchId), Query.equal("kind", kind)]);
+    const general = existing.find((l) => !l.departmentId);
+    if (general) {
+      if (!general.active) await patch("public_links", general.$id, { active: true });
+    } else {
+      const row = await insert("public_links", churchId, { kind, departmentId: null, token: randomToken(18), label: kind === "funding" ? "Besoins des départements" : "Remboursements", active: true, createdBy: ctx.user.id });
+      await audit(ctx, churchId, "create", "public_link", row.$id, `Lien public créé (${kind})`);
+    }
+    revalidateApp();
+    return { ok: true, message: "Lien prêt : copiez-le ou partagez-le." };
+  });
+}
+
+/** Ajoute en un clic les départements les plus courants (ceux qui existent déjà sont ignorés). */
+export async function defaultDepartmentsAction(fd: FormData): Promise<ActionResult> {
+  return run(async () => {
+    const ctx = await requireContext();
+    const churchId = String(fd.get("churchId"));
+    assertManage(ctx, churchId);
+    const names = ["Louange", "Accueil", "Jeunesse", "Enfants", "Médias", "Intercession", "Évangélisation", "Protocole", "Social"];
+    const existing = new Set((await adminList<{ $id: string; $createdAt: string; $updatedAt: string; name: string }>("departments", [Query.equal("churchId", churchId)])).map((d) => d.name.toLowerCase()));
+    let n = 0;
+    for (const name of names) if (!existing.has(name.toLowerCase())) { await insert("departments", churchId, { name, createdBy: ctx.user.id }); n++; }
+    await audit(ctx, churchId, "create", "department", null, `${n} départements standards ajoutés`);
+    revalidateApp();
+    return { ok: true, message: n ? `${n} départements ajoutés. Renommez ou archivez ceux qui ne servent pas.` : "Les départements standards existent déjà." };
   });
 }

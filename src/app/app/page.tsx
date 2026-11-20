@@ -21,6 +21,8 @@ import { currentRole } from "@/lib/workflow";
 import { formatEuro } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { MODULES } from "@/lib/guide";
+import { churchSetup } from "@/server/setup";
+import { SetupChecklist } from "@/components/admin/church-steps";
 import { BookOpen } from "lucide-react";
 import type { CrRequest, Expense, FundingRequest, OfferingLine, Reimbursement } from "@/lib/types";
 
@@ -29,7 +31,10 @@ export const metadata = { title: "Tableau de bord" };
 export default async function Dashboard({ searchParams }: { searchParams: Promise<PeriodParams> }) {
   const sp = await searchParams;
   const ctx = await requireContext();
+  const setups = ctx.isRegional ? await churchSetup(ctx.allChurches.filter((c) => c.active)) : [];
+  const checklist = ctx.isRegional ? <SetupChecklist hasMother={!!ctx.motherChurch} setups={setups} /> : null;
   if (!ctx.scopeIds.length) {
+    if (ctx.isRegional) return (<><PageHeader title={`Bienvenue, ${ctx.user.name.split(" ")[0]}`} description="Votre espace est prêt. Mettons en place les églises : quelques minutes suffisent." />{checklist}</>);
     return (
       <EmptyState className="mt-10" icon={<Building2 />} title={ctx.isRegional ? "Bienvenue ! Créez votre première église" : "Aucune église associée à votre compte"}
         description={ctx.isRegional ? "Commencez par la ville et l'église mère (Dijon), puis les églises filles." : "Demandez à l'église mère de vous donner un accès."}
@@ -70,6 +75,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader eyebrow={<span className="text-[13px] font-medium text-accent">{isAll ? `${ctx.scopeIds.length} églises · Bourgogne-Franche-Comté` : "Tableau de bord"}</span>} title={title} actions={<PeriodFilter value={period.key} from={sp.from} to={sp.to} />} />
+      {checklist}
       <nav aria-label="Modules" className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex w-max gap-2 xl:grid xl:w-full xl:grid-cols-8">
           {MODULES.map((m) => (

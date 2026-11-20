@@ -13,7 +13,8 @@
     "test:e2e": "playwright test --trace off",
     "typecheck": "tsc --noEmit",
     "test:isolation": "tsx scripts/test-isolation.ts",
-    "create-superadmin": "tsx scripts/create-superadmin.ts"
+    "create-superadmin": "tsx scripts/create-superadmin.ts",
+    "reset": "tsx scripts/reset.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^7.0.7",

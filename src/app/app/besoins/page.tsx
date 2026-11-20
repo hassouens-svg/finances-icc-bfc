@@ -5,6 +5,7 @@ import { requireContext, churchName, canManage } from "@/server/context";
 import { listScoped } from "@/server/data";
 import { lookupsFor } from "@/server/lookups";
 import { PageHeader } from "@/components/ui/page-header";
+import { PublicLinksPanel } from "@/components/public-links-panel";
 import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { Card, CardHeader, CardBody } from "@/components/ui/card";
@@ -40,7 +41,8 @@ export default async function FundingPage() {
   return (
     <>
       <PageHeader module={2} help="besoins" title="Besoins des départements" description="Les responsables expriment leurs besoins via un lien public ; vous étudiez, approuvez, puis convertissez en dépense ou en demande à la Cité Royale."
-        actions={ctx.scopeIds.some((id) => canManage(ctx, id)) ? <Button asChild variant="secondary"><Link href="/app/admin/liens"><Link2 /> Liens & QR codes</Link></Button> : undefined} />
+      />
+      <PublicLinksPanel ctx={ctx} kind="funding" />
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="En attente" value={items.filter((i) => ["received", "reviewing"].includes(i.status)).length} kind="count" tone="warning" />
         <KpiCard label="Approuvés" value={items.filter((i) => ["approved", "partially_approved"].includes(i.status)).reduce((a, i) => a + (i.approvedCents ?? 0), 0)} />

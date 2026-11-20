@@ -23,7 +23,7 @@ export const MODULES: GuideModule[] = [
     who: "Responsables de départements (sans compte), trésoriers",
     summary: "Les départements expriment leurs besoins via un lien public ; la trésorerie étudie, approuve et finance.",
     steps: [
-      { title: "Partager le lien", text: "Administration › Liens publics : créez un lien « Besoins » (général ou par département) et partagez-le par WhatsApp ou QR code.", href: "/app/admin/liens", cta: "Liens & QR codes" },
+      { title: "Partager le lien", text: "En haut de l'écran Besoins : « Copier le lien », « Partager » ou « WhatsApp », ou téléchargez le QR code. Des liens par département se créent dans Administration › Liens publics." },
       { title: "Le responsable remplit le formulaire", text: "Sur son téléphone, sans compte. Il reçoit un lien de suivi personnel." },
       { title: "Étudier", text: "Ouvrez le besoin et cliquez sur « Mettre à l'étude ». Le demandeur voit le statut changer sur son lien de suivi." },
       { title: "Décider", text: "« Approuver » (montant total ou partiel) ou « Refuser » (commentaire obligatoire)." },
@@ -36,7 +36,7 @@ export const MODULES: GuideModule[] = [
     who: "Membres (sans compte), trésoriers, valideurs",
     summary: "Rembourser une personne qui a avancé une dépense pour l'église, avec photo du justificatif.",
     steps: [
-      { title: "Partager le lien", text: "Administration › Liens publics : lien « Remboursements » + QR code.", href: "/app/admin/liens", cta: "Liens & QR codes" },
+      { title: "Partager le lien", text: "En haut de l'écran Remboursements : « Copier le lien », « Partager » ou « WhatsApp », ou téléchargez le QR code à afficher à l'église." },
       { title: "La personne envoie sa demande", text: "Motif, montant, date et photo du ticket (obligatoire). Aucune coordonnée bancaire n'est demandée en ligne." },
       { title: "Vérifier puis valider", text: "« Commencer la vérification », puis « Valider » en choisissant la catégorie. Une dépense liée est créée avec le justificatif et suit le circuit de validation." },
       { title: "Rembourser", text: "Quand la dépense liée est entièrement validée, « Rembourser » : date, mode et preuve. La dépense passe « Payée » et le demandeur est prévenu." },
@@ -106,11 +106,12 @@ export const ROLES_GUIDE: { role: string; does: string[] }[] = [
 ];
 
 export const FIRST_STEPS: GuideStep[] = [
-  { title: "Créer les églises", text: "Super admin : Administration › Villes & églises. Créez Dijon avec son logo et cochez « Église mère », puis les églises filles.", href: "/app/admin/eglises", cta: "Villes & églises" },
-  { title: "Créer les comptes", text: "Administration › Utilisateurs › « Créer un compte » : église, rôle, et mot de passe (ou lien d'invitation).", href: "/app/admin/utilisateurs", cta: "Utilisateurs" },
-  { title: "Préparer chaque église", text: "Comptes bancaires (avec solde de départ), départements, puis liens publics.", href: "/app/admin", cta: "Administration" },
-  { title: "Régler les règles", text: "Église mère : circuits de validation et seuils d'alerte.", href: "/app/admin/workflows", cta: "Circuits de validation" },
-  { title: "Utiliser au quotidien", text: "Saisir les offrandes chaque dimanche, déposer la caisse, saisir et valider les dépenses." },
+  { title: "Créer l'église mère", text: "Administration › Villes & églises › « Nouvelle église » : nom (ex. ICC Dijon), ville (tapez-la, elle est créée automatiquement), logo, et cochez « Église mère ».", href: "/app/admin/eglises", cta: "Villes & églises" },
+  { title: "Suivre « Prochaines étapes »", text: "La fiche de l'église affiche 4 étapes à cocher en un clic : compte du trésorier (avec mot de passe ou lien d'invitation), compte bancaire, départements courants, liens publics." },
+  { title: "Créer les églises filles", text: "Même chose pour Besançon, Chalon, Auxerre… Chaque église ne voit que ses propres données." },
+  { title: "Créer les comptes de l'église mère", text: "Utilisateurs › « Créer un compte » › rôle « Administrateur église mère » : ils voient et pilotent toute la région.", href: "/app/admin/utilisateurs", cta: "Utilisateurs" },
+  { title: "Vérifier les règles", text: "Circuits de validation et seuils d'alerte sont déjà réglés par défaut ; ajustez-les si besoin.", href: "/app/admin/workflows", cta: "Circuits de validation" },
+  { title: "Utiliser au quotidien", text: "Offrandes chaque culte, dépôt de la caisse, dépenses à valider, liens publics partagés par WhatsApp. Le tableau de bord indique toujours « À faire maintenant »." },
 ];
 
 export function guideFor(id: string) {

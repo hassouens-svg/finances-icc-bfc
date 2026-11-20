@@ -11,7 +11,7 @@ import { ChurchPicker } from "@/components/church-picker";
 import { PublicLinkDialog } from "@/components/admin/forms";
 import { ActionButton } from "@/components/action-form";
 import { togglePublicLinkAction } from "@/server/actions/admin";
-import { CopyButton } from "@/components/copy-button";
+import { CopyButton, ShareButton } from "@/components/copy-button";
 import { formatDate } from "@/lib/format";
 import type { Department, PublicLink } from "@/lib/types";
 
@@ -62,7 +62,8 @@ export default async function LinksPage({ searchParams }: { searchParams: Promis
                   <p className="truncate font-mono text-[12px] text-muted">{url}</p>
                   <p className="text-[12px] text-muted">{l.submissionsCount} envoi(s){l.expiresAt ? ` · expire le ${formatDate(l.expiresAt)}` : ""}</p>
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    <CopyButton value={url} />
+                    <CopyButton value={url} label="Copier le lien" variant="primary" />
+                    <ShareButton url={url} title={l.kind === "funding" ? "Formulaire des besoins" : "Demande de remboursement"} />
                     <a href={qr} download={`qr-${l.kind}-${church.slug}.png`} className="inline-flex h-8 items-center rounded-lg border border-border px-3 text-[13px] font-medium hover:bg-surface">QR code</a>
                     <ActionButton size="sm" variant="ghost" action={togglePublicLinkAction} payload={{ id: l.$id }}>{l.active ? "Désactiver" : "Activer"}</ActionButton>
                   </div>
